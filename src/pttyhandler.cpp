@@ -1,4 +1,18 @@
 #include "pttyhandler.h"
+#ifdef Q_OS_IOS
+pttyHandler::pttyHandler(QString name, QObject *parent)
+    : QObject(parent), serialError(true), portName(name) {
+    if (!name.isEmpty() && name.compare("none", Qt::CaseInsensitive) != 0)
+        qWarning("Virtual serial ports are unavailable on iOS");
+}
+pttyHandler::pttyHandler(QString name, quint32) : pttyHandler(name, static_cast<QObject *>(nullptr)) {}
+pttyHandler::~pttyHandler() = default;
+void pttyHandler::receiveDataIn(int) {}
+void pttyHandler::receiveDataFromRigToPtty(const QByteArray &) {}
+void pttyHandler::debugThis() {}
+void pttyHandler::receiveRigCaps(rigCapabilities *caps) { rigCaps = caps; }
+#else
+#include "pttyhandler.h"
 #include "logcategories.h"
 
 #include <QDebug>
@@ -354,3 +368,5 @@ void pttyHandler::receiveRigCaps(rigCapabilities* caps)
     this->rigCaps = caps;
 }
 
+
+#endif // Q_OS_IOS

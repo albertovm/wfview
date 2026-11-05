@@ -84,10 +84,18 @@ void yaesuUdpAudio::init()
         rxaudio = new audioHandlerQtOutput();
     }
     else if (rxSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+        rxaudio = new audioHandlerQtOutput();
+#else
         rxaudio = new audioHandlerPaOutput();
+#endif
     }
     else if (rxSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+        rxaudio = new audioHandlerQtOutput();
+#else
         rxaudio = new audioHandlerRtOutput();
+#endif
     }
 #ifndef BUILD_WFSERVER
     else if (rxSetup.type == tciAudio) {
@@ -120,10 +128,18 @@ void yaesuUdpAudio::init()
         txaudio = new audioHandlerQtInput();
     }
     else if (txSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+        txaudio = new audioHandlerQtInput();
+#else
         txaudio = new audioHandlerPaInput();
+#endif
     }
     else if (txSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+        txaudio = new audioHandlerQtInput();
+#else
         txaudio = new audioHandlerRtInput();
+#endif
     }
 #ifndef BUILD_WFSERVER
     else if (txSetup.type == tciAudio) {

@@ -20,3 +20,15 @@ Makefile
 Makefile.Debug
 Makefile.Release
 .DS_Store
+
+# Local Apple SDK dependencies and build products
+.ios-sdk/
+build-ios/
+aqtinstall.log
+*.app/
+*.app.dSYM/
+*.ipa
+*.xcarchive/
+*.p12
+*.p8
+*.mobileprovision

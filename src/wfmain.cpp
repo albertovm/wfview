@@ -105,7 +105,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     }
 #endif
 
+#ifndef Q_OS_IOS
     qInfo(logSystem()).noquote() << QString("PORTAUDIO Version: %0").arg(Pa_GetVersionText());
+#endif
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -277,7 +279,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         });
         connect(fts, &FirstTimeSetup::showSettings, this, [=](const bool networkEnabled) {
             qInfo(logSystem()) << "User elected to visit the Settings UI.";
+#ifdef Q_OS_IOS
+            prefs.enableLAN = true;
+#else
             prefs.enableLAN = networkEnabled;
+#endif
             setupui->updateLanPrefs((int)l_all);
             showAndRaiseWidget(setupui);
             prefs.settingsChanged = true;
@@ -543,6 +549,10 @@ void wfmain::openRig()
     makeRig();
 
 
+#ifdef Q_OS_IOS
+    prefs.enableLAN = true;
+    prefs.virtualSerialPort = "none";
+#endif
     if (prefs.enableLAN)
     {
         // "We need to setup the tx/rx audio:
@@ -736,6 +746,10 @@ void wfmain::removeRig()
 
 void wfmain::findSerialPort()
 {
+#ifdef Q_OS_IOS
+    serialPortRig.clear();
+#else
+
     // Find the ICOM radio connected, or, if none, fall back to OS default.
     // qInfo(logSystem()) << "Searching for serial port...";
     bool found = false;
@@ -801,6 +815,8 @@ void wfmain::findSerialPort()
 #endif
         }
     }
+
+#endif
 }
 
 void wfmain::receiveCommReady()
@@ -2086,6 +2102,9 @@ void wfmain::loadSettings()
     }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
+#ifdef Q_OS_IOS
+    prefs.virtualSerialPort = "none";
+#endif
 
 
     prefs.localAFgain = (quint8)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
@@ -2108,6 +2127,9 @@ void wfmain::loadSettings()
     settings->beginGroup("LAN");
 
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
+#ifdef Q_OS_IOS
+    prefs.enableLAN = true;
+#endif
 
     // If LAN is enabled, server gets its audio straight from the LAN
     // migrated, remove these

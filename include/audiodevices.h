@@ -12,12 +12,15 @@
 
 #include <QFontMetrics>
 
+#ifndef Q_OS_IOS
 #include <portaudio.h>
 #ifndef Q_OS_LINUX
 #include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
 #endif
+
+#endif // !Q_OS_IOS
 
 #include "wfviewtypes.h"
 

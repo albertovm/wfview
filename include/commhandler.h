@@ -5,7 +5,11 @@
 
 #include <QMutex>
 #include <QDataStream>
+#ifndef Q_OS_IOS
 #include <QtSerialPort/QSerialPort>
+#else
+class QSerialPort;
+#endif
 #include <QTime>
 #include <QTimer>
 
@@ -28,7 +32,9 @@ public:
 
 public slots:
     void setPTTType(pttType_t ptt);
+#ifndef Q_OS_IOS
     void handleError(QSerialPort::SerialPortError error);
+#endif
     void init();
 
 private slots:

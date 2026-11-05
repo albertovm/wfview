@@ -6,6 +6,12 @@ FirstTimeSetup::FirstTimeSetup(QWidget *parent) :
     ui(new Ui::FirstTimeSetup)
 {
     ui->setupUi(this);
+#ifdef Q_OS_IOS
+    ui->serialPortThisPC->hide();
+    ui->USBPortThisPC->hide();
+    ui->WiFiNetwork->setChecked(true);
+    isNetwork = true;
+#endif
 
     setWindowFlags(Qt::Dialog
         | Qt::FramelessWindowHint);

@@ -1,5 +1,7 @@
 #include "settingswidget.h"
+#ifndef Q_OS_IOS
 #include "qserialportinfo.h"
+#endif
 #include "ui_settingswidget.h"
 
 #define setchk(a,b) quietlyUpdateCheckbox(a,b)
@@ -10,6 +12,12 @@ settingswidget::settingswidget(QWidget *parent) :
     ui(new Ui::settingswidget)
 {
     ui->setupUi(this);
+#ifdef Q_OS_IOS
+    ui->serialEnableBtn->hide();
+    ui->groupSerial->hide();
+    ui->vspCombo->hide();
+    ui->ptyDeviceLabel->hide();
+#endif
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
     connect(ui->serverUsersTable,SIGNAL(rowDeleted(int)),this,SLOT(serverDeleteUserLine(int)));
@@ -41,7 +49,9 @@ settingswidget::~settingswidget()
     }
 
     if (prefs->audioSystem == portAudio) {
+#ifndef Q_OS_IOS
         Pa_Terminate();
+#endif
     }
 }
 
@@ -857,6 +867,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->blockSignals(true);
         ui->serialDeviceListCombo->clear();
         ui->serialDeviceListCombo->addItem("Auto", "");
+#ifndef Q_OS_IOS
         for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
@@ -870,6 +881,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
 
+#endif
         ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findData(prefs->serialPortRadio));
         ui->serialDeviceListCombo->blockSignals(false);
         break;
@@ -1641,6 +1653,11 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
 
 void settingswidget::on_serialEnableBtn_clicked(bool checked)
 {
+#ifdef Q_OS_IOS
+    Q_UNUSED(checked);
+    prefs->enableLAN = true;
+    return;
+#endif
     ui->groupSerial->setEnabled(checked);
     ui->groupNetwork->setEnabled(!checked);
 

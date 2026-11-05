@@ -89,6 +89,10 @@ void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivA
         port = Q_NULLPTR;
     }
 
+#ifdef Q_OS_IOS
+    emit havePortError(errorType(rigSerialPort, tr("Serial connections are unavailable on iOS. Use a network connection.")));
+    return;
+#else
     port = new QSerialPort();
 
     qobject_cast<QSerialPort*>(port)->setPortName(rigSerialPort);
@@ -100,6 +104,7 @@ void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivA
     network = false;
     // Run setup common to all rig type
     commonSetup();
+#endif
 }
 
 void kenwoodCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -2038,6 +2043,7 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
     }
 }
 
+#ifndef Q_OS_IOS
 void kenwoodCommander::serialPortError(QSerialPort::SerialPortError err)
 {
     switch (err) {
@@ -2048,6 +2054,8 @@ void kenwoodCommander::serialPortError(QSerialPort::SerialPortError err)
         break;
     }
 }
+#endif
+
 
 
 void kenwoodCommander::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {

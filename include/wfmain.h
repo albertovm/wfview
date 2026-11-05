@@ -62,7 +62,9 @@
 #include "tciserver.h"
 
 #include <qcustomplot.h>
+#ifndef Q_OS_IOS
 #include <qserialportinfo.h>
+#endif
 #include "usbcontroller.h"
 #include "controllersetup.h"
 #include "rigcreator.h"
@@ -75,11 +77,13 @@
 #include <deque>
 #include <memory>
 
+#ifndef Q_OS_IOS
 #include <portaudio.h>
 #ifndef Q_OS_LINUX
 #include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
+#endif
 #endif
 
 #ifdef USB_CONTROLLER

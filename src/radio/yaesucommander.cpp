@@ -93,6 +93,10 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
         port = Q_NULLPTR;
     }
 
+#ifdef Q_OS_IOS
+    emit havePortError(errorType(rigSerialPort, tr("Serial connections are unavailable on iOS. Use a network connection.")));
+    return;
+#else
     port = new QSerialPort();
 
     qobject_cast<QSerialPort*>(port)->setPortName(rigSerialPort);
@@ -128,6 +132,7 @@ void yaesuCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAdd
 
     // Run setup common to all rig type
     commonSetup();
+#endif
 }
 
 void yaesuCommander::haveScopeData(QByteArray in)
@@ -2213,6 +2218,7 @@ void yaesuCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
     }
 }
 
+#ifndef Q_OS_IOS
 void yaesuCommander::serialPortError(QSerialPort::SerialPortError err)
 {
     switch (err) {
@@ -2223,3 +2229,4 @@ void yaesuCommander::serialPortError(QSerialPort::SerialPortError err)
         break;
     }
 }
+#endif

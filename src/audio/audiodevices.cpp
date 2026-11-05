@@ -31,11 +31,17 @@ void audioDevices::enumerate()
     inputs.clear();
     outputs.clear();
 
+#ifdef Q_OS_IOS
+    // Mobile devices use the platform audio backend, including saved desktop preferences.
+    if (system == portAudio || system == rtAudio) system = qtAudio;
+#endif
     switch (system)
     {
         case qtAudio:
         {
+#ifndef Q_OS_IOS
             Pa_Terminate();
+#endif
 
             qInfo(logAudio()) << "Audio device(s) found (*=default)";
 
@@ -159,6 +165,7 @@ void audioDevices::enumerate()
             }
             break;
         }
+#ifndef Q_OS_IOS
         case portAudio:
         {
             PaError err;
@@ -215,7 +222,9 @@ void audioDevices::enumerate()
         }
         case rtAudio:
         {
+#ifndef Q_OS_IOS
             Pa_Terminate();
+#endif
 
 #if defined(Q_OS_LINUX)
             RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
@@ -324,6 +333,11 @@ void audioDevices::enumerate()
             delete audio;
             break;
         }
+#else
+        case portAudio:
+        case rtAudio:
+            break; // Normalized to qtAudio above.
+#endif
         case tciAudio:
         {
             inputs.append(new audioDevice("<TCI Audio>",0,1));

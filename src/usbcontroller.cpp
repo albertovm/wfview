@@ -2147,10 +2147,6 @@ void usbController::receiveCacheItem(cacheItem item)
 
 }
 
-#endif
-
-
-
 void usbController::checkForGamePad()
 {
 
@@ -2492,3 +2488,5 @@ bool usbController::initDevice(USBDEVICE *dev)
 
     return ret;
 }
+
+#endif // USB_CONTROLLER

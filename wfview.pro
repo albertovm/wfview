@@ -4,13 +4,14 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia xml
+QT       += core gui network multimedia xml
+!ios:QT += serialport
 
 #QT += sql
 #DEFINES += USESQL
 
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
-DEFINES += USB_CONTROLLER
+!ios:DEFINES += USB_CONTROLLER
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport websockets
 
@@ -70,15 +71,15 @@ win32:DEFINES += __WINDOWS_WASAPI__
 #linux:DEFINES += __LINUX_ALSA__
 #linux:DEFINES += __LINUX_OSS__
 linux:DEFINES += __LINUX_PULSE__
-macx:DEFINES += __MACOSX_CORE__
-!linux:SOURCES += ../rtaudio/RTAudio.cpp
-!linux:HEADERS += ../rtaudio/RTAudio.h
-!linux:INCLUDEPATH += ../rtaudio
+macos:!ios:DEFINES += __MACOSX_CORE__
+!linux:!ios:SOURCES += ../rtaudio/RTAudio.cpp
+!linux:!ios:HEADERS += ../rtaudio/RTAudio.h
+!linux:!ios:INCLUDEPATH += ../rtaudio
 
 linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread -ludev
 
 win32:INCLUDEPATH += ../portaudio/include
-!win32:LIBS += -lportaudio
+!win32:!ios:LIBS += -lportaudio
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked as deprecated (the exact warnings
@@ -109,12 +110,12 @@ isEmpty(PREFIX) {
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
-macx:INCLUDEPATH += /usr/local/include
-macx:LIBS += -L/usr/local/lib
+macos:!ios:INCLUDEPATH += /usr/local/include
+macos:!ios:LIBS += -L/usr/local/lib
 
 win32:RC_ICONS = "resources/icons/Windows/wfview 512x512.ico"
 
-macx{
+macos{
     ICON = resources/wfview.icns
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0
     QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
@@ -171,14 +172,14 @@ unix:rigs.files = rigs/*
 unix:rigs.path = $$PREFIX/share/wfview/rigs
 INSTALLS += rigs
 
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
+macos:!ios:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 # Do not do this, it will hang on start:
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
 
-  macos:LIBS += -L ../qcustomplot/qcustomplot-sharedlib/build -lqcustomplotd
+  macos:!ios:LIBS += -L ../qcustomplot/qcustomplot-sharedlib/build -lqcustomplotd
 
   lessThan(QT_MAJOR_VERSION, 6) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlotd.so/ {print \"-lQCustomPlotd\"}'")
@@ -228,7 +229,7 @@ CONFIG(debug, release|debug) {
   }
 } else {
 
-  macos:LIBS += -L ../qcustomplot/qcustomplot-sharedlib/build -lqcustomplot
+  macos:!ios:LIBS += -L ../qcustomplot/qcustomplot-sharedlib/build -lqcustomplot
 
   lessThan(QT_MAJOR_VERSION, 6) {
     linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlot.so/ {print \"-lQCustomPlot\"}'")
@@ -276,11 +277,11 @@ CONFIG(debug, release|debug) {
 
 contains(DEFINES,USB_CONTROLLER){
     linux:LIBS += -L./ -lhidapi-libusb
-    macx:LIBS += -lhidapi
+    macos:!ios:LIBS += -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
 }
 
-!win32:LIBS += -L./ -lopus
+!win32:!ios:LIBS += -L./ -lopus
 
 win32:LIBS += -lopus -lole32 -luser32
 
@@ -288,8 +289,8 @@ win32:LIBS += -lopus -lole32 -luser32
 #  !win32:LIBS += -lft4222
 #}
 
-#macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
-#macx:HEADERS += ../qcustomplot/qcustomplot.h
+#macos:SOURCES += ../qcustomplot/qcustomplot.cpp
+#macos:HEADERS += ../qcustomplot/qcustomplot.h
 
 win32:INCLUDEPATH += ../qcustomplot
 win32:INCLUDEPATH += ../hidapi/hidapi
@@ -537,3 +538,13 @@ DISTFILES += \
     src/audio/adpcm/license.txt \
     src/audio/resampler/COPYING
 
+
+# iOS uses Qt Multimedia; desktop audio backends cannot be linked into this target.
+ios {
+    SOURCES -= src/audio/audiohandlerpainput.cpp src/audio/audiohandlerpaoutput.cpp \
+               src/audio/audiohandlerrtinput.cpp src/audio/audiohandlerrtoutput.cpp
+    HEADERS -= include/audiohandlerpainput.h include/audiohandlerpaoutput.h \
+               include/audiohandlerrtinput.h include/audiohandlerrtoutput.h
+}
+
+ios:include(platform/ios/dependencies.pri)

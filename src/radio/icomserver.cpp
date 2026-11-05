@@ -373,10 +373,18 @@ void icomServer::controlReceived()
                         radio->txaudio = new audioHandlerQtOutput();
                     }
                     else if (radio->txAudioSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+                        radio->txaudio = new audioHandlerQtOutput();
+#else
                         radio->txaudio = new audioHandlerPaOutput();
+#endif
                     }
                     else if (radio->txAudioSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+                        radio->txaudio = new audioHandlerQtOutput();
+#else
                         radio->txaudio = new audioHandlerRtOutput();
+#endif
                     }
                     else
                     {
@@ -422,10 +430,18 @@ void icomServer::controlReceived()
                         radio->rxaudio = new audioHandlerQtInput();
                     }
                     else if (radio->rxAudioSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+                        radio->rxaudio = new audioHandlerQtInput();
+#else
                         radio->rxaudio = new audioHandlerPaInput();
+#endif
                     }
                     else if (radio->rxAudioSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+                        radio->rxaudio = new audioHandlerQtInput();
+#else
                         radio->rxaudio = new audioHandlerRtInput();
+#endif
                     }
                     else
                     {

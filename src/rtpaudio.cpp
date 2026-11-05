@@ -111,10 +111,18 @@ void rtpAudio::init()
             outaudio = new audioHandlerQtOutput();
         }
         else if (outSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+            outaudio = new audioHandlerQtOutput();
+#else
             outaudio = new audioHandlerPaOutput();
+#endif
         }
         else if (outSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+            outaudio = new audioHandlerQtOutput();
+#else
             outaudio = new audioHandlerRtOutput();
+#endif
         }
 #ifndef BUILD_WFSERVER
         else if (outSetup.type == tciAudio) {
@@ -154,10 +162,18 @@ void rtpAudio::init()
             inaudio = new audioHandlerQtInput();
         }
         else if (inSetup.type == portAudio) {
+#ifdef Q_OS_IOS
+            inaudio = new audioHandlerQtInput();
+#else
             inaudio = new audioHandlerPaInput();
+#endif
         }
         else if (inSetup.type == rtAudio) {
+#ifdef Q_OS_IOS
+            inaudio = new audioHandlerQtInput();
+#else
             inaudio = new audioHandlerRtInput();
+#endif
         }
 #ifndef BUILD_WFSERVER
         else if (inSetup.type == tciAudio) {

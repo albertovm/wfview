@@ -170,6 +170,9 @@ void loggingWindow::on_clearDisplayBtn_clicked()
 
 void loggingWindow::on_openDirBtn_clicked()
 {
+#ifdef Q_OS_IOS
+    const bool rtn = QDesktopServices::openUrl(QUrl::fromLocalFile(logDirectory));
+#else
     QString cmd;
     bool rtn = false;
     QStringList arg;
@@ -186,12 +189,16 @@ void loggingWindow::on_openDirBtn_clicked()
 #endif
     arg += QDir::toNativeSeparators(dir.canonicalFilePath());;
     rtn = QProcess::startDetached(cmd, arg);
+#endif
     if(!rtn)
         qInfo(logLogger()) << "Error, open log directory" << logDirectory << "command failed";
 }
 
 void loggingWindow::on_openLogFileBtn_clicked()
 {
+#ifdef Q_OS_IOS
+    const bool rtn = QDesktopServices::openUrl(QUrl::fromLocalFile(logFilename));
+#else
     QString cmd;
     bool rtn = false;
 #ifdef Q_OS_LINUX
@@ -202,6 +209,7 @@ void loggingWindow::on_openLogFileBtn_clicked()
     cmd = "open";
 #endif
     rtn = QProcess::startDetached(cmd, { logFilename });
+#endif
     if(!rtn)
         qInfo(logLogger()) << "Error, open log file command failed";
 }

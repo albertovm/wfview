@@ -2,7 +2,9 @@
 #define KENWOODCOMMANDER_H
 #include "rigcommander.h"
 #include "rtpaudio.h"
+#ifndef Q_OS_IOS
 #include <QSerialPort>
+#endif
 
 #define audioLevelBufferSize (4)
 
@@ -48,7 +50,9 @@ public slots:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
 
     // Serial:
+#ifndef Q_OS_IOS
     void serialPortError(QSerialPort::SerialPortError err);
+#endif
     void receiveDataFromRig();
 
     void parseData(QByteArray dataInput);

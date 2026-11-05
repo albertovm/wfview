@@ -2,7 +2,9 @@
 #define YAESUCOMMANDER_H
 #include "rigcommander.h"
 #include "rtpaudio.h"
+#ifndef Q_OS_IOS
 #include <QSerialPort>
+#endif
 #include <ft4222handler.h>
 
 #include "yaesuudpcontrol.h"
@@ -59,7 +61,9 @@ public slots:
     void receiveCommand(funcs func, QVariant value, uchar receiver) override;
 
     // Serial:
+#ifndef Q_OS_IOS
     void serialPortError(QSerialPort::SerialPortError err);
+#endif
     void receiveDataFromRig();
 
 

@@ -13,6 +13,10 @@
 #include <QProcess>
 #include <QFileInfo>
 #include <QDir>
+#ifdef Q_OS_IOS
+#include <QDesktopServices>
+#include <QUrl>
+#endif
 
 #include "logcategories.h"
 #include "prefs.h"

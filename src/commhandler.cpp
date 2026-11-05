@@ -1,4 +1,22 @@
 #include "commhandler.h"
+#ifdef Q_OS_IOS
+commHandler::commHandler(QObject *parent) : QObject(parent), serialError(true) {}
+commHandler::commHandler(QString name, quint32, quint8, QObject *parent)
+    : QObject(parent), serialError(true), portName(name) {}
+commHandler::~commHandler() = default;
+bool commHandler::rtsStatus() { return false; }
+void commHandler::init() {
+    serialError = true;
+    emit havePortError(errorType(portName, tr("Serial connections are unavailable on iOS. Use a network connection.")));
+}
+void commHandler::setPTTType(pttType_t) {}
+void commHandler::receiveDataIn() {}
+void commHandler::receiveDataFromUserToRig(const QByteArray &) { init(); }
+void commHandler::debugThis() {}
+void commHandler::setHalfDuplex(bool) {}
+void commHandler::sendDataOut(const QByteArray &) { init(); }
+#else
+#include "commhandler.h"
 #include "logcategories.h"
 
 #include <QDebug>
@@ -416,3 +434,5 @@ void commHandler::handleError(QSerialPort::SerialPortError err)
             break;
     }
 }
+
+#endif // Q_OS_IOS

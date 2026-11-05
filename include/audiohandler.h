@@ -40,10 +40,12 @@
 #include "audiohandlerbase.h"
 #include "audiohandlerqtinput.h"
 #include "audiohandlerqtoutput.h"
+#ifndef Q_OS_IOS
 #include "audiohandlerrtinput.h"
 #include "audiohandlerrtoutput.h"
 #include "audiohandlerpainput.h"
 #include "audiohandlerpaoutput.h"
+#endif
 #include "audiohandlertciinput.h"
 #include "audiohandlertcioutput.h"
 

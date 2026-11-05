@@ -7,7 +7,11 @@
 #include <QDataStream>
 #include <QIODevice>
 #include <QSocketNotifier>
+#ifndef Q_OS_IOS
 #include <QtSerialPort/QSerialPort>
+#else
+class QSerialPort;
+#endif
 
 #include "rigidentities.h"
 #include "wfviewtypes.h"
