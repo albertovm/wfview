@@ -155,6 +155,33 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
 
+#ifdef Q_OS_IOS
+    // Secondary windows are full-screen on iPhone/iPad and do not have a
+    // desktop title-bar close button. Add a consistent, touch-sized return
+    // action to every persistent auxiliary window. About and Log already use
+    // scrollable text widgets; the same button keeps the user from getting
+    // trapped in those views.
+    const auto addMobileReturn = [this](QWidget *window) {
+        auto *button = new QPushButton(QObject::tr("Back to Main"), window);
+        button->setObjectName("mobileBackToMainButton");
+        button->setMinimumSize(180, 44);
+        button->setGeometry(12, 12, 190, 44);
+        button->raise();
+        QObject::connect(button, &QPushButton::clicked, window, [window, this]() {
+            window->hide();
+            this->show();
+            this->raise();
+            this->activateWindow();
+        });
+    };
+    addMobileReturn(logWindow);
+    addMobileReturn(cal);
+    addMobileReturn(rpt);
+    addMobileReturn(sat);
+    addMobileReturn(abtBox);
+    addMobileReturn(selRad);
+#endif
+
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
 #ifdef Q_OS_IOS
