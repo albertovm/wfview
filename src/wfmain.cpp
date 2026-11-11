@@ -5861,6 +5861,18 @@ void wfmain::on_rigCreatorBtn_clicked()
 {
     rigCreator* create = new rigCreator();
     create->setAttribute(Qt::WA_DeleteOnClose);
+#ifdef Q_OS_IOS
+    auto *back = new QPushButton(tr("Back to Main"), create);
+    back->setMinimumSize(180, 44);
+    QTimer::singleShot(0, create, [create, back]() {
+        back->setGeometry(12, qMax(12, create->height() - 58),
+                          qMax(180, create->width() - 24), 44);
+        back->raise();
+    });
+    connect(back, &QPushButton::clicked, create, [this, create]() {
+        create->close(); show(); raise(); activateWindow();
+    });
+#endif
     create->show();
 }
 
@@ -5868,6 +5880,18 @@ void wfmain::on_TXaudioProcBtn_clicked()
 {
     if (!audioProcWin) {
         audioProcWin = new AudioProcessingWidget(this);
+#ifdef Q_OS_IOS
+        auto *back = new QPushButton(tr("Back to Main"), audioProcWin);
+        back->setMinimumSize(180, 44);
+        QTimer::singleShot(0, audioProcWin, [this, back]() {
+            back->setGeometry(12, qMax(12, audioProcWin->height() - 58),
+                              qMax(180, audioProcWin->width() - 24), 44);
+            back->raise();
+        });
+        connect(back, &QPushButton::clicked, this, [this]() {
+            audioProcWin->hide(); show(); raise(); activateWindow();
+        });
+#endif
         audioProcWin->setPrefs(prefs.txAudioProc);
         audioProcWin->setAntiAlias(prefs.wfAntiAlias);
 
@@ -5939,6 +5963,18 @@ void wfmain::on_RXaudioProcBtn_clicked()
 {
     if (!rxAudioProcWin) {
         rxAudioProcWin = new RxAudioProcessingWidget(this);
+#ifdef Q_OS_IOS
+        auto *back = new QPushButton(tr("Back to Main"), rxAudioProcWin);
+        back->setMinimumSize(180, 44);
+        QTimer::singleShot(0, rxAudioProcWin, [this, back]() {
+            back->setGeometry(12, qMax(12, rxAudioProcWin->height() - 58),
+                              qMax(180, rxAudioProcWin->width() - 24), 44);
+            back->raise();
+        });
+        connect(back, &QPushButton::clicked, this, [this]() {
+            rxAudioProcWin->hide(); show(); raise(); activateWindow();
+        });
+#endif
         rxAudioProcWin->setDebugMode(debugMode);
         rxAudioProcWin->setPrefs(prefs.rxAudioProc);
         rxAudioProcWin->setAntiAlias(prefs.wfAntiAlias);
