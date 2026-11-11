@@ -4,6 +4,9 @@
 #include "collapsiblesection.h"
 #include "logcategories.h"
 #include <cmath>
+#ifdef Q_OS_IOS
+#include <QScrollArea>
+#endif
 
 // MBEQ band centre frequencies (Hz) — must match MbeqProcessor::bandFreqs
 static const float kBandFreqs[TxAudioProcessor::EQ_BANDS] = {
@@ -306,7 +309,12 @@ void TxAudioProcessingWidget::setProcessingControlsEnabled(bool enabled)
 
 void TxAudioProcessingWidget::buildUi()
 {
+#ifdef Q_OS_IOS
+    auto *content = new QWidget;
+    auto* mainLayout = new QVBoxLayout(content);
+#else
     auto* mainLayout = new QVBoxLayout(this);
+#endif
 
     // ── Master bypass ────────────────────────────────────────────────────────
     {
@@ -750,6 +758,18 @@ void TxAudioProcessingWidget::buildUi()
     connect(compGrp, &CollapsibleSection::expandedChanged, this,
             [this](bool) { updateSizeConstraints(); });
 
+#ifdef Q_OS_IOS
+    auto *scroll = new QScrollArea(this);
+    scroll->setObjectName("txAudioVerticalScroll");
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setWidget(content);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->addWidget(scroll);
+    setMaximumHeight(QGuiApplication::primaryScreen()->availableGeometry().height());
+#endif
     updateSizeConstraints();
     // The initial call above runs before the widget is shown and Qt's style
     // has been polished, so sizeHints for controls like vertical QSliders
