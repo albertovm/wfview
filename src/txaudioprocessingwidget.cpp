@@ -4,6 +4,9 @@
 #include "collapsiblesection.h"
 #include "logcategories.h"
 #include <cmath>
+#ifdef Q_OS_IOS
+#include <QScrollArea>
+#endif
 
 // MBEQ band centre frequencies (Hz) — must match MbeqProcessor::bandFreqs
 static const float kBandFreqs[TxAudioProcessor::EQ_BANDS] = {
@@ -27,6 +30,22 @@ TxAudioProcessingWidget::TxAudioProcessingWidget(QWidget* parent)
                        // and force the window to stay above the main window.
     setWindowTitle(tr("TX Audio Processing"));
     buildUi();
+#ifdef Q_OS_IOS
+    if (QLayout *builtLayout = layout()) {
+        builtLayout->setParent(nullptr);
+        auto *content = new QWidget;
+        content->setLayout(builtLayout);
+        auto *scroll = new QScrollArea(this);
+        scroll->setObjectName("txAudioVerticalScroll");
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll->setWidget(content);
+        auto *outer = new QVBoxLayout(this);
+        outer->setContentsMargins(0, 0, 0, 0);
+        outer->addWidget(scroll);
+    }
+#endif
     connect(&m_specDiagTimer, &QTimer::timeout,
             this, &TxAudioProcessingWidget::onSpecDiagTimer);
     m_specDiagTimer.setInterval(1000);
