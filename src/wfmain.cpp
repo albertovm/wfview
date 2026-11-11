@@ -163,11 +163,18 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     // scrollable text widgets; the same button keeps the user from getting
     // trapped in those views.
     const auto addMobileReturn = [this](QWidget *window) {
-        auto *button = new QPushButton(QObject::tr("Back to Main"), window);
+        auto *button = new QPushButton(QObject::tr("Cancel"), window);
         button->setObjectName("mobileBackToMainButton");
         button->setMinimumSize(180, 44);
-        button->setGeometry(12, 12, 190, 44);
-        button->raise();
+        for (auto *scroll : window->findChildren<QAbstractScrollArea*>()) {
+            scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        }
+        QTimer::singleShot(0, window, [window, button]() {
+            button->setGeometry(12, qMax(12, window->height() - 58),
+                                qMax(180, window->width() - 24), 44);
+            button->raise();
+        });
         QObject::connect(button, &QPushButton::clicked, window, [window, this]() {
             window->hide();
             this->show();
@@ -4918,7 +4925,7 @@ void wfmain::showAndRaiseWidget(QWidget *w)
     // return action used by the other mobile windows the first time they are
     // shown, and force every embedded scroll area to be vertical-only.
     if (!w->findChild<QPushButton*>("mobileBackToMainButton")) {
-        auto *back = new QPushButton(tr("Back to Main"), w);
+        auto *back = new QPushButton(tr("Cancel"), w);
         back->setObjectName("mobileBackToMainButton");
         back->setMinimumSize(180, 44);
         connect(back, &QPushButton::clicked, this, [this, w]() {
@@ -5140,15 +5147,7 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
-    if(rpt->isMinimized())
-    {
-        rpt->raise();
-        rpt->activateWindow();
-        return;
-    }
-    rpt->show();
-    rpt->raise();
-    rpt->activateWindow();
+    showAndRaiseWidget(rpt);
 }
 
 void wfmain::on_attSelCombo_activated(int index)
@@ -5799,15 +5798,7 @@ void wfmain::connectionTimeout()
 void wfmain::on_cwButton_clicked()
 {
     if (cw != Q_NULLPTR) {
-        if(cw->isMinimized())
-        {
-            cw->raise();
-            cw->activateWindow();
-            return;
-        }
-        cw->show();
-        cw->raise();
-        cw->activateWindow();
+        showAndRaiseWidget(cw);
     }
 }
 
