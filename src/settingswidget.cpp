@@ -79,19 +79,9 @@ settingswidget::settingswidget(QWidget *parent) :
     }
     ui->settingsStack->setCurrentIndex(qMax(0, currentPage));
 
-    // iOS/iPadOS windows do not have the macOS red close control.  Keep an
-    // explicit, full-width action in the Settings form so users can return to
-    // the main screen after saving, without relying on a horizontal gesture.
-    auto *mobileBackButton = new QPushButton(tr("Save Settings and Return"), this);
-    mobileBackButton->setAccessibleName(tr("Save Settings and Return to Main Screen"));
-    mobileBackButton->setMinimumHeight(44);
-    mobileBackButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    if (rootLayout)
-        rootLayout->addWidget(mobileBackButton);
-    connect(mobileBackButton, &QPushButton::clicked, this, [this]() {
-        emit saveSettingsButtonPressed();
-        emit mobileCloseSettingsRequested();
-    });
+    // On mobile, the regular Save Settings button closes Settings through the
+    // main-window mobile close connection; do not add a second full-width
+    // action to the form.
     connect(ui->saveSettingsBtn, &QPushButton::clicked, this,
             &settingswidget::mobileCloseSettingsRequested);
 #endif
