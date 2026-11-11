@@ -10,6 +10,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QSizePolicy>
+#include <QAbstractScrollArea>
 
 
 // This code is copyright 2017-2024 Elliott H. Liggett and Phil E. Taylor
@@ -4911,6 +4912,31 @@ void wfmain::showAndRaiseWidget(QWidget *w)
     if(!w)
         return;
 
+#ifdef Q_OS_IOS
+    // Frequency and band panels are standalone widgets (not QDialogs), so
+    // they have no title-bar close affordance on iOS. Add the same bottom
+    // return action used by the other mobile windows the first time they are
+    // shown, and force every embedded scroll area to be vertical-only.
+    if (!w->findChild<QPushButton*>("mobileBackToMainButton")) {
+        auto *back = new QPushButton(tr("Back to Main"), w);
+        back->setObjectName("mobileBackToMainButton");
+        back->setMinimumSize(180, 44);
+        connect(back, &QPushButton::clicked, this, [this, w]() {
+            w->hide(); show(); raise(); activateWindow();
+        });
+        for (auto *scroll : w->findChildren<QAbstractScrollArea*>()) {
+            scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+            scroll->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
+        }
+        QTimer::singleShot(0, w, [w, back]() {
+            back->setGeometry(12, qMax(12, w->height() - 58),
+                             qMax(180, w->width() - 24), 44);
+            back->raise();
+        });
+    }
+#endif
+
     if(w->isMinimized())
     {
         w->raise();
@@ -5589,15 +5615,7 @@ void wfmain::setDefaultColorPresets()
 
 void wfmain::on_showLogBtn_clicked()
 {
-    if(logWindow->isMinimized())
-    {
-        logWindow->raise();
-        logWindow->activateWindow();
-        return;
-    }
-    logWindow->show();
-    logWindow->raise();
-    logWindow->activateWindow();
+    showAndRaiseWidget(logWindow);
 }
 
 void wfmain::initLogging()
