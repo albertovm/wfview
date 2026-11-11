@@ -328,7 +328,11 @@ int main(int argc, char *argv[])
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(settingsFile, logFilename, debugMode);
+#ifdef Q_OS_IOS
+    w.showFullScreen();
+#else
     w.show();
+#endif
 
 #endif
     return a.exec();

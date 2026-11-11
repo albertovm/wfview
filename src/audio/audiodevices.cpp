@@ -163,6 +163,24 @@ void audioDevices::enumerate()
 #endif
                 numOutputDevices++;
             }
+#ifdef Q_OS_IOS
+            // iOS exposes the active AVAudioSession route as the Qt default
+            // device.  Bluetooth, wired-headset and speaker routes are
+            // selected by iOS and may not appear as separate QAudioDevice
+            // objects (especially in the simulator).  Keep explicit route
+            // entries in the UI, all backed by the current Qt device; when a
+            // route is connected iOS automatically redirects that device.
+            if (!inputs.isEmpty()) {
+                const auto base = inputs.first()->deviceInfo;
+                inputs.append(new audioDevice("iPhone Microphone (system route)", base, "ios-route", false));
+                inputs.append(new audioDevice("Bluetooth / Headset Microphone (when connected)", base, "ios-route", false));
+            }
+            if (!outputs.isEmpty()) {
+                const auto base = outputs.first()->deviceInfo;
+                outputs.append(new audioDevice("iPhone Speaker (system route)", base, "ios-route", false));
+                outputs.append(new audioDevice("Bluetooth / Headphones (when connected)", base, "ios-route", false));
+            }
+#endif
             break;
         }
 #ifndef Q_OS_IOS

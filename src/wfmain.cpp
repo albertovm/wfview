@@ -4,6 +4,12 @@
 
 #include "rigidentities.h"
 #include "logcategories.h"
+#include <QScrollArea>
+#include <QScroller>
+#include <QAbstractButton>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QSizePolicy>
 
 
 // This code is copyright 2017-2024 Elliott H. Liggett and Phil E. Taylor
@@ -37,6 +43,39 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
     ui->setupUi(this);
+#ifdef Q_OS_IOS
+    // wfview's main control panel was designed for a wide desktop window.
+    // Keep its controls at their native size and let touch users pan the full
+    // surface when the phone's landscape viewport is narrower than the panel.
+    QWidget *radioContent = ui->centralWidget;
+    auto *radioScroll = new QScrollArea(this);
+    radioScroll->setFrameShape(QFrame::NoFrame);
+    // Let the desktop widget contract to the phone/tablet viewport first;
+    // only use horizontal scrolling when a control has an unavoidable
+    // minimum width. This keeps the proportions usable in portrait mode.
+    radioContent->setMinimumWidth(0);
+    radioContent->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    radioScroll->setWidgetResizable(true);
+    radioScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    radioScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    radioScroll->setWidget(radioContent);
+    setCentralWidget(radioScroll);
+    QScroller::grabGesture(radioScroll->viewport(), QScroller::TouchGesture);
+
+    // Match the touch affordances used by the Android client.  The original
+    // wfview widgets were sized for a mouse and keyboard, so controls with
+    // short native heights are difficult to operate on a phone or tablet.
+    // Keep the desktop geometry unchanged and only enlarge interactive
+    // controls on iOS/iPadOS.
+    for (QAbstractButton *button : findChildren<QAbstractButton*>()) {
+        button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+        button->setIconSize(QSize(28, 28));
+    }
+    for (QComboBox *combo : findChildren<QComboBox*>())
+        combo->setMinimumHeight(qMax(combo->minimumHeight(), 44));
+    for (QLineEdit *edit : findChildren<QLineEdit*>())
+        edit->setMinimumHeight(qMax(edit->minimumHeight(), 44));
+#endif
     setWindowTitle(QString("wfview"));
 
     ui->monitorLabel->setText("Mon");
@@ -118,6 +157,16 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+#ifdef Q_OS_IOS
+    connect(setupui, &settingswidget::mobileCloseSettingsRequested, this, [this]() {
+        // Settings is a separate widget on iOS/iPadOS.  Hide only that widget
+        // and leave the main radio screen available underneath it.
+        setupui->hide();
+        this->show();
+        this->raise();
+        this->activateWindow();
+    });
+#endif
 
     connect(setupui, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
 
@@ -5972,7 +6021,10 @@ void wfmain::receiveValue(cacheItem val){
 
     if (rigCaps == Q_NULLPTR)
     {
-        qWarning(logSystem()) << "Data received before we have rigCaps(), aborting";
+        if (pendingValues.size() < 256)
+            pendingValues.append(val);
+        if (pendingValues.size() == 1 || (pendingValues.size() % 64) == 0)
+            qInfo(logSystem()) << "Queueing radio data until rig capabilities are ready:" << pendingValues.size();
         return;
     }
     else if (val.receiver >= receivers.size())
@@ -6720,6 +6772,14 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps->hasSpectrum;
 
         configureVFOs(); // Now we have a rig connection, need to configure the VFOs
+
+        // Replay frames received while the initial capability exchange was in
+        // progress. This is especially important for Icom LAN scope packets,
+        // which can start flowing before the rig definition is installed.
+        const QVector<cacheItem> queued = pendingValues;
+        pendingValues.clear();
+        for (const cacheItem &queuedValue : queued)
+            receiveValue(queuedValue);
 
         rigName->setText(rigCaps->modelName);
         if (serverConfig.enabled) {

@@ -10,9 +10,16 @@ void yaesuUdpBase::init()
 {
     // Separate init() needs to bind socket after being moved to dedicated thread.
     sock.reset(new QUdpSocket(this));
-    sock->bind(this->localAddr);
-    qInfo(logUdp()).noquote() << QString("Created Yaesu UDP connection to %0:%1 (from %2:%3)")
-                                     .arg(remoteAddr.toString()).arg(remotePort).arg(sock->localAddress().toString()).arg(sock->localPort()) ;
+    // A simulator/iOS device may not expose the Mac host name through
+    // QHostInfo. Binding to that unresolved address silently prevents the
+    // inbound scope/waterfall datagrams from arriving. Use AnyIPv4 as a safe
+    // fallback while retaining a valid interface address when available.
+    QHostAddress bindAddress = this->localAddr;
+    if (bindAddress.isNull() || bindAddress.isLoopback())
+        bindAddress = QHostAddress::AnyIPv4;
+    const bool bound = sock->bind(bindAddress, 0, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+    qInfo(logUdp()).noquote() << QString("Created Yaesu UDP connection to %0:%1 (from %2:%3, bound=%4)")
+                                     .arg(remoteAddr.toString()).arg(remotePort).arg(sock->localAddress().toString()).arg(sock->localPort()).arg(bound) ;
     connect(sock.data(), &QUdpSocket::readyRead, this, &yaesuUdpBase::incoming);
 
     sendConnect();

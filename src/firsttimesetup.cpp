@@ -1,20 +1,68 @@
 #include "firsttimesetup.h"
 #include "ui_firsttimesetup.h"
+#include <QGuiApplication>
+#include <QLayout>
+#include <QLabel>
+#include <QMetaObject>
+#include <QScrollArea>
+#include <QScroller>
+#include <QScreen>
+#include <QShowEvent>
+#include <QSizePolicy>
+#include <QVBoxLayout>
 
 FirstTimeSetup::FirstTimeSetup(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FirstTimeSetup)
 {
+#ifdef Q_OS_IOS
+    QWidget *content = new QWidget;
+    ui->setupUi(content);
+#else
     ui->setupUi(this);
+#endif
 #ifdef Q_OS_IOS
     ui->serialPortThisPC->hide();
     ui->USBPortThisPC->hide();
     ui->WiFiNetwork->setChecked(true);
     isNetwork = true;
+
+    // The desktop welcome form is 518 px wide, which is wider than an iPhone
+    // in portrait. Let it use the current screen bounds and re-fit after a
+    // device rotation instead of clipping its controls.
+    setMinimumSize(0, 0);
+    if (content->layout()) {
+        content->layout()->setContentsMargins(12, 12, 12, 12);
+        content->layout()->setSpacing(8);
+    }
+    content->setMinimumSize(0, 0);
+    content->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    for (QLabel* label : content->findChildren<QLabel*>())
+        label->setWordWrap(true);
+
+    auto *scrollArea = new QScrollArea(this);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setWidget(content);
+    auto *dialogLayout = new QVBoxLayout(this);
+    dialogLayout->setContentsMargins(0, 0, 0, 0);
+    dialogLayout->addWidget(scrollArea);
+    QScroller::grabGesture(scrollArea->viewport(), QScroller::TouchGesture);
+    QMetaObject::connectSlotsByName(this);
+
+    connect(QGuiApplication::primaryScreen(), &QScreen::geometryChanged,
+            this, &FirstTimeSetup::fitToScreen);
 #endif
 
     setWindowFlags(Qt::Dialog
         | Qt::FramelessWindowHint);
+
+#ifdef Q_OS_IOS
+    if (QScreen* screen = QGuiApplication::primaryScreen())
+        fitToScreen(screen->geometry());
+#endif
 
     this->setupState = setupInitial;
     ui->step2GroupBox->setHidden(true);
@@ -29,6 +77,27 @@ FirstTimeSetup::FirstTimeSetup(QWidget *parent) :
     networkText3 = QString(tr("Mic and Speaker on THIS PC"));
 
 }
+
+#ifdef Q_OS_IOS
+void FirstTimeSetup::fitToScreen(const QRect& geometry)
+{
+    if (!geometry.isValid())
+        return;
+
+    setMinimumSize(0, 0);
+    setGeometry(geometry);
+    setWindowState(windowState() | Qt::WindowFullScreen);
+    if (layout())
+        layout()->activate();
+}
+
+void FirstTimeSetup::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
+    if (QScreen* screen = QGuiApplication::primaryScreen())
+        fitToScreen(screen->geometry());
+}
+#endif
 
 FirstTimeSetup::~FirstTimeSetup()
 {

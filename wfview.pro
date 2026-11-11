@@ -86,6 +86,18 @@ win32:INCLUDEPATH += ../portaudio/include
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
+
+# Keep Xcode diagnostics useful for wfview code while avoiding a wall of
+# third-party Qt/QCustomPlot/Eigen compatibility warnings on modern Qt.
+ios {
+    QMAKE_CXXFLAGS += -Wno-shorten-64-to-32 \
+        -Wno-unused-parameter \
+        -Wno-unused-but-set-variable \
+        -Wno-deprecated-declarations \
+        -Wno-unnecessary-virtual-specifier \
+        -Wno-misleading-indentation
+    QMAKE_XCODE_SETTINGS += ALWAYS_SEARCH_USER_PATHS=NO
+}
 DEFINES += QCUSTOMPLOT_USE_LIBRARY
 
 # These defines are used for the resampler
@@ -125,6 +137,16 @@ macos{
     QMAKE_INFO_PLIST = resources/Info.plist
     rigFiles.files = rigs
     rigFiles.path = Contents/Resources
+    QMAKE_BUNDLE_DATA += rigFiles
+}
+
+# iOS/iPadOS also needs the rig definition files at runtime.  Without these
+# files the Icom model ID cannot be resolved, rigCaps remains null, and every
+# main-window control is disabled.  Keep the files in the app bundle root so
+# wfmain's applicationDirPath()/rigs lookup works on the simulator and device.
+ios {
+    rigFiles.files = rigs
+    rigFiles.path = rigs
     QMAKE_BUNDLE_DATA += rigFiles
 }
 
@@ -548,3 +570,12 @@ ios {
 }
 
 ios:include(platform/ios/dependencies.pri)
+
+# Reuse the macOS artwork for the iOS and iPadOS app icon.
+ios {
+    iosIcon.files = resources/icons/macOS/normal/AppIcon.appiconset/1024-mac.png
+    iosIcon.path = Assets.xcassets/AppIcon.appiconset
+    QMAKE_BUNDLE_DATA += iosIcon
+    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2
+    QMAKE_INFO_PLIST = platform/ios/Info.plist
+}

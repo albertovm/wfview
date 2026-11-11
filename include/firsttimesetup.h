@@ -3,6 +3,8 @@
 
 // include <QWidget>
 #include <QDialog>
+#include <QShowEvent>
+#include <QScreen>
 
 namespace Ui {
 class FirstTimeSetup;
@@ -18,6 +20,10 @@ public:
 
 private:
     Ui::FirstTimeSetup *ui;
+#ifdef Q_OS_IOS
+    void fitToScreen(const QRect& geometry);
+    void showEvent(QShowEvent* event) override;
+#endif
 
     enum setupState_t {
         setupInitial,

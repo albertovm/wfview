@@ -3,6 +3,7 @@
 
 #include "icomudphandler.h"
 #include "logcategories.h"
+#include <QNetworkInterface>
 
 icomUdpHandler::icomUdpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
@@ -49,15 +50,19 @@ icomUdpHandler::icomUdpHandler(udpPreferences prefs, audioSetup rx, audioSetup t
     }
     
     // Convoluted way to find the external IP address, there must be a better way????
-    QString localhostname = QHostInfo::localHostName();
-    QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    for(const auto &address: hostList)
-    {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
-        {
-            localIP = QHostAddress(address.toString());
+    // QHostInfo::localHostName() often resolves only the Mac host name when
+    // wfview runs inside an iOS simulator. Enumerate the actual interfaces so
+    // the Icom stream handshake advertises an address reachable by the server.
+    for (const QHostAddress &address : QNetworkInterface::allAddresses()) {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && !address.isLoopback()) {
+            localIP = address;
+            break;
         }
     }
+    if (localIP.isNull())
+        localIP = QHostAddress::AnyIPv4;
+    qInfo(logUdp()) << "Icom UDP local address:" << localIP.toString()
+                    << "remote:" << radioIP.toString();
 
 }
 

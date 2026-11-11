@@ -5,7 +5,7 @@ sdk=${WFVIEW_QT_ROOT:-/Volumes/1TbSilver/wfview-ios}
 platform=${1:-iphoneos}
 case "$platform" in
     iphoneos) arch=arm64 ;;
-    iphonesimulator) arch=${WFVIEW_SIM_ARCH:-arm64} ;;
+    iphonesimulator) arch=${WFVIEW_SIM_ARCH:-x86_64} ;;
     *) echo 'Usage: build-ios-opus.sh [iphoneos|iphonesimulator]' >&2; exit 2 ;;
 esac
 command -v cmake >/dev/null

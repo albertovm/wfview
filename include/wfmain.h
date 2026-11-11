@@ -656,6 +656,10 @@ private:
 
     QHash<quint16,rigInfo> rigList;
     rigCapabilities* rigCaps = Q_NULLPTR;
+    // Values can arrive immediately after the network connection, before the
+    // radio capability exchange has completed. Keep them briefly so spectrum
+    // and status frames are not lost during startup.
+    QVector<cacheItem> pendingValues;
 
     rigInput currentModSrc[4];
 

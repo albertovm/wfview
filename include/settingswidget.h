@@ -101,6 +101,7 @@ signals:
     void changedServerPref(prefServerItem i);
     void connectButtonPressed();
     void saveSettingsButtonPressed();
+    void mobileCloseSettingsRequested();
     void revertSettingsButtonPressed();
     void havePortError(errorType err);
 

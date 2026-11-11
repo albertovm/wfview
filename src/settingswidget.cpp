@@ -3,6 +3,13 @@
 #include "qserialportinfo.h"
 #endif
 #include "ui_settingswidget.h"
+#ifdef Q_OS_IOS
+#include <QScrollArea>
+#include <QScroller>
+#include <QLayout>
+#include <QGroupBox>
+#include <QPushButton>
+#endif
 
 #define setchk(a,b) quietlyUpdateCheckbox(a,b)
 
@@ -25,6 +32,68 @@ settingswidget::settingswidget(QWidget *parent) :
     ui->usbControllersSetup->hide();
     ui->usbControllersReset->hide();
     ui->usbResetLbl->hide();
+
+    // The desktop Settings form is a horizontal category list plus a wide
+    // stacked page. On iPhone/iPad, put the category selector above the page
+    // and give every page its own vertical-only touch scroll area.
+    auto *rootLayout = qobject_cast<QBoxLayout*>(layout());
+    if (rootLayout) {
+        rootLayout->setDirection(QBoxLayout::TopToBottom);
+        rootLayout->setContentsMargins(8, 8, 8, 8);
+        rootLayout->setSpacing(8);
+    }
+    ui->settingsList->setMinimumWidth(0);
+    ui->settingsList->setMaximumWidth(QWIDGETSIZE_MAX);
+    ui->settingsList->setMinimumHeight(72);
+    ui->settingsList->setMaximumHeight(120);
+    if (rootLayout) {
+        auto *categoryLayout = qobject_cast<QBoxLayout*>(rootLayout->itemAt(0)->layout());
+        if (categoryLayout)
+            categoryLayout->setDirection(QBoxLayout::TopToBottom);
+    }
+
+    const int currentPage = ui->settingsStack->currentIndex();
+    const QList<QWidget*> pages = [&]() {
+        QList<QWidget*> result;
+        for (int i = 0; i < ui->settingsStack->count(); ++i)
+            result.append(ui->settingsStack->widget(i));
+        return result;
+    }();
+    for (QWidget *page : pages) {
+        ui->settingsStack->removeWidget(page);
+        page->setMinimumWidth(0);
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        for (QWidget *child : page->findChildren<QWidget*>()) {
+            child->setMinimumWidth(0);
+            if (auto *group = qobject_cast<QGroupBox*>(child))
+                group->setMaximumWidth(QWIDGETSIZE_MAX);
+        }
+        auto *scroll = new QScrollArea(ui->settingsStack);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll->setWidget(page);
+        QScroller::grabGesture(scroll->viewport(), QScroller::TouchGesture);
+        ui->settingsStack->addWidget(scroll);
+    }
+    ui->settingsStack->setCurrentIndex(qMax(0, currentPage));
+
+    // iOS/iPadOS windows do not have the macOS red close control.  Keep an
+    // explicit, full-width action in the Settings form so users can return to
+    // the main screen after saving, without relying on a horizontal gesture.
+    auto *mobileBackButton = new QPushButton(tr("Save Settings and Return"), this);
+    mobileBackButton->setAccessibleName(tr("Save Settings and Return to Main Screen"));
+    mobileBackButton->setMinimumHeight(44);
+    mobileBackButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    if (rootLayout)
+        rootLayout->addWidget(mobileBackButton);
+    connect(mobileBackButton, &QPushButton::clicked, this, [this]() {
+        emit saveSettingsButtonPressed();
+        emit mobileCloseSettingsRequested();
+    });
+    connect(ui->saveSettingsBtn, &QPushButton::clicked, this,
+            &settingswidget::mobileCloseSettingsRequested);
 #endif
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));

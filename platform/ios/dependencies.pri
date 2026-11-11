@@ -1,6 +1,8 @@
 # Dependency paths are supplied by scripts/configure-ios.sh.
 isEmpty(WFVIEW_IOS_ROOT): error("Set WFVIEW_IOS_ROOT to the prepared iOS dependency directory")
-WFVIEW_IOS_PREFIX = $$WFVIEW_IOS_ROOT/install/iphoneos-arm64
+isEmpty(WFVIEW_IOS_PLATFORM): WFVIEW_IOS_PLATFORM = iphoneos
+isEmpty(WFVIEW_IOS_ARCH): WFVIEW_IOS_ARCH = arm64
+WFVIEW_IOS_PREFIX = $$WFVIEW_IOS_ROOT/install/$$WFVIEW_IOS_PLATFORM-$$WFVIEW_IOS_ARCH
 !exists($$WFVIEW_IOS_PREFIX/lib/libopus.a): error("Build Opus for iOS first")
 INCLUDEPATH += $$quote($$WFVIEW_IOS_PREFIX/include/opus) \
                $$quote($$WFVIEW_IOS_ROOT/src/eigen-3.4.0) \
@@ -24,4 +26,4 @@ QTPLUGIN.multimedia = darwinmediaplugin
 # Qt 6.8.3's qyieldcpu.h uses the ARM ACLE __yield intrinsic without pulling
 # in its declaration. Clang 21 (Xcode 27) diagnoses that as an error, so make
 # the platform intrinsic declarations available before any Qt header.
-QMAKE_CXXFLAGS += -include arm_acle.h
+equals(WFVIEW_IOS_ARCH, arm64): QMAKE_CXXFLAGS += -include arm_acle.h
