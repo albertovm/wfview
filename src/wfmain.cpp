@@ -5936,6 +5936,19 @@ void wfmain::on_TXaudioProcBtn_clicked()
         }
     }
     audioProcWin->show();
+ #ifdef Q_OS_IOS
+    for (auto *scroll : audioProcWin->findChildren<QAbstractScrollArea*>()) {
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    }
+    if (auto *back = audioProcWin->findChild<QPushButton*>("mobileBackToMainButton")) {
+        QTimer::singleShot(0, audioProcWin, [this, back]() {
+            back->setGeometry(12, qMax(12, audioProcWin->height() - 58),
+                              qMax(180, audioProcWin->width() - 24), 44);
+            back->raise();
+        });
+    }
+ #endif
     audioProcWin->raise();
     audioProcWin->activateWindow();
 }
