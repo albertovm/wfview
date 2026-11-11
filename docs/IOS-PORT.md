@@ -36,6 +36,14 @@ física e virtual ficam ocultos, configurações persistidas são normalizadas p
 rede e os handlers seriais rejeitam acesso no iOS. Os destinos desktop mantêm
 suas implementações. A compilação está concluída; a validação funcional completa
 do aplicativo ainda está pendente.
+
+## Hostname e DNS dinâmico
+
+O campo de Radio Access aceita endereço IPv4 ou nome DNS, inclusive nomes de
+DNS dinâmico. As conexões TCP resolvem o nome por meio do Qt; os caminhos UDP
+Icom e Yaesu resolvem o nome durante cada nova conexão. Assim, depois de uma
+desconexão/reconexão, uma alteração de IP publicada pelo DNS é utilizada sem
+editar novamente as configurações.
 O Qt também avisa que foi testado com SDK 18, enquanto o Xcode instalado fornece
 SDK 27.1. A compatibilidade dessa combinação ainda não foi validada.
 
@@ -92,3 +100,25 @@ WFVIEW_QT_ROOT="/Volumes/1TbSilver/wfview-ios" sh scripts/prepare-ios-headers.sh
 As bibliotecas de dispositivo e simulador ficam separadas em `install/`,
 por plataforma e arquitetura. O destino mínimo desse script é iOS 16.
 A compilação isolada do codec não valida a aplicação inteira.
+
+## Compilação para simulador
+
+Os scripts aceitam um destino separado, sem sobrescrever a compilação de
+aparelho físico:
+
+```sh
+sh scripts/build-ios-opus.sh iphonesimulator
+WFVIEW_IOS_PLATFORM=iphonesimulator sh scripts/build-ios.sh
+```
+
+O Qt 6.8.3 pré-compilado deste ambiente usa `x86_64` para simulador e `arm64`
+para aparelhos físicos. Por isso, o padrão dos scripts de simulador é `x86_64`.
+É necessário um runtime universal com suporte a essa arquitetura (por exemplo,
+iOS 26.0) e Rosetta em Macs Apple Silicon. O runtime iOS 27.1 arm64 instalado
+não executa esse binário. `WFVIEW_SIM_ARCH` permite selecionar outra arquitetura
+somente quando todas as bibliotecas Qt também foram compiladas para ela.
+
+O projeto gerado fica em `build/wfview-simulator/wfview.xcodeproj`, dentro de
+`WFVIEW_QT_ROOT`; o aplicativo fica em `Release-iphonesimulator/wfview.app`.
+No Xcode 27, a interface dos simuladores é o Device Hub, disponível em
+`Xcode > Open Developer Tool > Device Hub`.

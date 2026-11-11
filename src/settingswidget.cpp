@@ -12,11 +12,19 @@ settingswidget::settingswidget(QWidget *parent) :
     ui(new Ui::settingswidget)
 {
     ui->setupUi(this);
+    ui->ipAddressTxt->setPlaceholderText(tr("IP address or DNS hostname"));
+    ui->ipAddressTxt->setToolTip(tr("Enter an IPv4 address, DNS name, or dynamic-DNS hostname (for example radio.example.net). The name is resolved again whenever wfview reconnects."));
 #ifdef Q_OS_IOS
     ui->serialEnableBtn->hide();
     ui->groupSerial->hide();
     ui->vspCombo->hide();
     ui->ptyDeviceLabel->hide();
+    // iOS/iPadOS cannot expose the desktop USB-controller and serial APIs.
+    // Remove those controls instead of leaving options that can never work.
+    ui->enableUsbChk->hide();
+    ui->usbControllersSetup->hide();
+    ui->usbControllersReset->hide();
+    ui->usbResetLbl->hide();
 #endif
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
