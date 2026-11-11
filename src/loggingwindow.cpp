@@ -25,6 +25,16 @@ loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     ui->logTextDisplay->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->logTextDisplay->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     ui->logTextDisplay->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui->userAnnotationText->setMinimumWidth(0);
+    ui->userAnnotationText->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    // These desktop file-sharing actions cannot open a useful filesystem
+    // dialog on iOS and otherwise force the bottom row wider than the screen.
+    ui->openDirBtn->setVisible(false);
+    ui->copyPathBtn->setVisible(false);
+    ui->sendToPasteBtn->setVisible(false);
+    ui->openLogFileBtn->setText(tr("Open"));
+    ui->toBottomBtn->setText(tr("Bottom"));
+    ui->annotateBtn->setText(tr("Add"));
     setMinimumSize(0, 0);
     const QRect screen = QGuiApplication::primaryScreen()->availableGeometry();
     setMaximumSize(screen.size());

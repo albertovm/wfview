@@ -4947,6 +4947,11 @@ void wfmain::showAndRaiseWidget(QWidget *w)
             back->setGeometry(qMax(12, w->width() - 60), 12, 48, 44);
             back->raise();
         });
+    } else if (auto *back = w->findChild<QPushButton*>("mobileBackToMainButton")) {
+        QTimer::singleShot(0, w, [w, back]() {
+            back->setGeometry(qMax(12, w->width() - 60), 12, 48, 44);
+            back->raise();
+        });
     }
 #endif
 
