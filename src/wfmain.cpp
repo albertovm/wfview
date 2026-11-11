@@ -5158,6 +5158,19 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
+#ifdef Q_OS_IOS
+    if (!rpt->findChild<QPushButton*>("mobileBackToMainButton")) {
+        auto *closeButton = new QPushButton(rpt);
+        closeButton->setObjectName("mobileBackToMainButton");
+        closeButton->setIcon(rpt->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        closeButton->setIconSize(QSize(28, 28));
+        closeButton->setToolTip(tr("Return to Main"));
+        closeButton->setAccessibleName(tr("Return to Main"));
+        connect(closeButton, &QPushButton::clicked, this, [this]() {
+            rpt->hide(); show(); raise(); activateWindow();
+        });
+    }
+#endif
     showAndRaiseWidget(rpt);
 }
 
