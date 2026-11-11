@@ -1,5 +1,10 @@
 #include "loggingwindow.h"
 #include "ui_loggingwindow.h"
+#ifdef Q_OS_IOS
+#include <QGuiApplication>
+#include <QScreen>
+#include <QSizePolicy>
+#endif
 
 loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     QWidget(parent),
@@ -13,6 +18,18 @@ loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     ui->annotateBtn->setDefault(true);
     ui->logTextDisplay->setFocusPolicy(Qt::NoFocus);
     ui->annotateBtn->setFocusPolicy(Qt::NoFocus);
+#ifdef Q_OS_IOS
+    // Desktop geometry in loggingwindow.ui is much wider/taller than an
+    // iPhone. Let the text area consume the available height and keep all
+    // actions visible below it; only vertical scrolling is useful on mobile.
+    ui->logTextDisplay->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->logTextDisplay->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    ui->logTextDisplay->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setMinimumSize(0, 0);
+    const QRect screen = QGuiApplication::primaryScreen()->availableGeometry();
+    setMaximumSize(screen.size());
+    resize(screen.width(), screen.height());
+#endif
     
     QDir d = QFileInfo(logFilename).absoluteDir();
     logDirectory = d.absolutePath();
