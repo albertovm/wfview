@@ -163,16 +163,19 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     // scrollable text widgets; the same button keeps the user from getting
     // trapped in those views.
     const auto addMobileReturn = [this](QWidget *window) {
-        auto *button = new QPushButton(QObject::tr("Cancel"), window);
+        auto *button = new QPushButton(window);
         button->setObjectName("mobileBackToMainButton");
-        button->setMinimumSize(180, 44);
+        button->setIcon(window->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        button->setIconSize(QSize(28, 28));
+        button->setToolTip(QObject::tr("Return to Main"));
+        button->setAccessibleName(QObject::tr("Return to Main"));
+        button->setMinimumSize(48, 44);
         for (auto *scroll : window->findChildren<QAbstractScrollArea*>()) {
             scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         }
         QTimer::singleShot(0, window, [window, button]() {
-            button->setGeometry(12, qMax(12, window->height() - 58),
-                                qMax(180, window->width() - 24), 44);
+            button->setGeometry(qMax(12, window->width() - 60), 12, 48, 44);
             button->raise();
         });
         QObject::connect(button, &QPushButton::clicked, window, [window, this]() {
@@ -4925,9 +4928,13 @@ void wfmain::showAndRaiseWidget(QWidget *w)
     // return action used by the other mobile windows the first time they are
     // shown, and force every embedded scroll area to be vertical-only.
     if (!w->findChild<QPushButton*>("mobileBackToMainButton")) {
-        auto *back = new QPushButton(tr("Cancel"), w);
+        auto *back = new QPushButton(w);
         back->setObjectName("mobileBackToMainButton");
-        back->setMinimumSize(180, 44);
+        back->setIcon(w->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
+        back->setAccessibleName(tr("Return to Main"));
+        back->setMinimumSize(48, 44);
         connect(back, &QPushButton::clicked, this, [this, w]() {
             w->hide(); show(); raise(); activateWindow();
         });
@@ -4937,8 +4944,7 @@ void wfmain::showAndRaiseWidget(QWidget *w)
             scroll->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
         }
         QTimer::singleShot(0, w, [w, back]() {
-            back->setGeometry(12, qMax(12, w->height() - 58),
-                             qMax(180, w->width() - 24), 44);
+            back->setGeometry(qMax(12, w->width() - 60), 12, 48, 44);
             back->raise();
         });
     }
@@ -5871,11 +5877,13 @@ void wfmain::on_rigCreatorBtn_clicked()
     rigCreator* create = new rigCreator();
     create->setAttribute(Qt::WA_DeleteOnClose);
 #ifdef Q_OS_IOS
-    auto *back = new QPushButton(tr("Back to Main"), create);
+    auto *back = new QPushButton(create);
+    back->setIcon(create->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+    back->setIconSize(QSize(28, 28));
+    back->setToolTip(tr("Return to Main"));
     back->setMinimumSize(180, 44);
     QTimer::singleShot(0, create, [create, back]() {
-        back->setGeometry(12, qMax(12, create->height() - 58),
-                          qMax(180, create->width() - 24), 44);
+        back->setGeometry(qMax(12, create->width() - 60), 12, 48, 44);
         back->raise();
     });
     connect(back, &QPushButton::clicked, create, [this, create]() {
@@ -5890,11 +5898,13 @@ void wfmain::on_TXaudioProcBtn_clicked()
     if (!audioProcWin) {
         audioProcWin = new AudioProcessingWidget(this);
 #ifdef Q_OS_IOS
-        auto *back = new QPushButton(tr("Back to Main"), audioProcWin);
+        auto *back = new QPushButton(audioProcWin);
+        back->setIcon(audioProcWin->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
         back->setMinimumSize(180, 44);
         QTimer::singleShot(0, audioProcWin, [this, back]() {
-            back->setGeometry(12, qMax(12, audioProcWin->height() - 58),
-                              qMax(180, audioProcWin->width() - 24), 44);
+            back->setGeometry(qMax(12, audioProcWin->width() - 60), 12, 48, 44);
             back->raise();
         });
         connect(back, &QPushButton::clicked, this, [this]() {
@@ -5934,8 +5944,7 @@ void wfmain::on_TXaudioProcBtn_clicked()
     }
     if (auto *back = audioProcWin->findChild<QPushButton*>("mobileBackToMainButton")) {
         QTimer::singleShot(0, audioProcWin, [this, back]() {
-            back->setGeometry(12, qMax(12, audioProcWin->height() - 58),
-                              qMax(180, audioProcWin->width() - 24), 44);
+            back->setGeometry(qMax(12, audioProcWin->width() - 60), 12, 48, 44);
             back->raise();
         });
     }
@@ -5986,11 +5995,13 @@ void wfmain::on_RXaudioProcBtn_clicked()
     if (!rxAudioProcWin) {
         rxAudioProcWin = new RxAudioProcessingWidget(this);
 #ifdef Q_OS_IOS
-        auto *back = new QPushButton(tr("Back to Main"), rxAudioProcWin);
+        auto *back = new QPushButton(rxAudioProcWin);
+        back->setIcon(rxAudioProcWin->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
         back->setMinimumSize(180, 44);
         QTimer::singleShot(0, rxAudioProcWin, [this, back]() {
-            back->setGeometry(12, qMax(12, rxAudioProcWin->height() - 58),
-                              qMax(180, rxAudioProcWin->width() - 24), 44);
+            back->setGeometry(qMax(12, rxAudioProcWin->width() - 60), 12, 48, 44);
             back->raise();
         });
         connect(back, &QPushButton::clicked, this, [this]() {
