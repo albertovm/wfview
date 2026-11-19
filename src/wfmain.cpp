@@ -4,6 +4,13 @@
 
 #include "rigidentities.h"
 #include "logcategories.h"
+#include <QScrollArea>
+#include <QScroller>
+#include <QAbstractButton>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QSizePolicy>
+#include <QAbstractScrollArea>
 
 
 // This code is copyright 2017-2024 Elliott H. Liggett and Phil E. Taylor
@@ -37,6 +44,39 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
     ui->setupUi(this);
+#ifdef Q_OS_IOS
+    // wfview's main control panel was designed for a wide desktop window.
+    // Keep its controls at their native size and let touch users pan the full
+    // surface when the phone's landscape viewport is narrower than the panel.
+    QWidget *radioContent = ui->centralWidget;
+    auto *radioScroll = new QScrollArea(this);
+    radioScroll->setFrameShape(QFrame::NoFrame);
+    // Let the desktop widget contract to the phone/tablet viewport first;
+    // only use horizontal scrolling when a control has an unavoidable
+    // minimum width. This keeps the proportions usable in portrait mode.
+    radioContent->setMinimumWidth(0);
+    radioContent->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    radioScroll->setWidgetResizable(true);
+    radioScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    radioScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    radioScroll->setWidget(radioContent);
+    setCentralWidget(radioScroll);
+    QScroller::grabGesture(radioScroll->viewport(), QScroller::TouchGesture);
+
+    // Match the touch affordances used by the Android client.  The original
+    // wfview widgets were sized for a mouse and keyboard, so controls with
+    // short native heights are difficult to operate on a phone or tablet.
+    // Keep the desktop geometry unchanged and only enlarge interactive
+    // controls on iOS/iPadOS.
+    for (QAbstractButton *button : findChildren<QAbstractButton*>()) {
+        button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+        button->setIconSize(QSize(28, 28));
+    }
+    for (QComboBox *combo : findChildren<QComboBox*>())
+        combo->setMinimumHeight(qMax(combo->minimumHeight(), 44));
+    for (QLineEdit *edit : findChildren<QLineEdit*>())
+        edit->setMinimumHeight(qMax(edit->minimumHeight(), 44));
+#endif
     setWindowTitle(QString("wfview"));
 
     ui->monitorLabel->setText("Mon");
@@ -105,7 +145,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     }
 #endif
 
+#ifndef Q_OS_IOS
     qInfo(logSystem()).noquote() << QString("PORTAUDIO Version: %0").arg(Pa_GetVersionText());
+#endif
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -114,8 +156,55 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
 
+#ifdef Q_OS_IOS
+    // Secondary windows are full-screen on iPhone/iPad and do not have a
+    // desktop title-bar close button. Add a consistent, touch-sized return
+    // action to every persistent auxiliary window. About and Log already use
+    // scrollable text widgets; the same button keeps the user from getting
+    // trapped in those views.
+    const auto addMobileReturn = [this](QWidget *window) {
+        auto *button = new QPushButton(window);
+        button->setObjectName("mobileBackToMainButton");
+        button->setIcon(window->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        button->setIconSize(QSize(28, 28));
+        button->setToolTip(QObject::tr("Return to Main"));
+        button->setAccessibleName(QObject::tr("Return to Main"));
+        button->setMinimumSize(48, 44);
+        for (auto *scroll : window->findChildren<QAbstractScrollArea*>()) {
+            scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        }
+        QTimer::singleShot(0, window, [window, button]() {
+            button->setGeometry(qMax(12, window->width() - 60), 12, 48, 44);
+            button->raise();
+        });
+        QObject::connect(button, &QPushButton::clicked, window, [window, this]() {
+            window->hide();
+            this->show();
+            this->raise();
+            this->activateWindow();
+        });
+    };
+    addMobileReturn(logWindow);
+    addMobileReturn(cal);
+    addMobileReturn(rpt);
+    addMobileReturn(sat);
+    addMobileReturn(abtBox);
+    addMobileReturn(selRad);
+#endif
+
     finputbtns = new frequencyinputwidget();
     setupui = new settingswidget();
+#ifdef Q_OS_IOS
+    connect(setupui, &settingswidget::mobileCloseSettingsRequested, this, [this]() {
+        // Settings is a separate widget on iOS/iPadOS.  Hide only that widget
+        // and leave the main radio screen available underneath it.
+        setupui->hide();
+        this->show();
+        this->raise();
+        this->activateWindow();
+    });
+#endif
 
     connect(setupui, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
 
@@ -277,7 +366,11 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         });
         connect(fts, &FirstTimeSetup::showSettings, this, [=](const bool networkEnabled) {
             qInfo(logSystem()) << "User elected to visit the Settings UI.";
+#ifdef Q_OS_IOS
+            prefs.enableLAN = true;
+#else
             prefs.enableLAN = networkEnabled;
+#endif
             setupui->updateLanPrefs((int)l_all);
             showAndRaiseWidget(setupui);
             prefs.settingsChanged = true;
@@ -543,6 +636,10 @@ void wfmain::openRig()
     makeRig();
 
 
+#ifdef Q_OS_IOS
+    prefs.enableLAN = true;
+    prefs.virtualSerialPort = "none";
+#endif
     if (prefs.enableLAN)
     {
         // "We need to setup the tx/rx audio:
@@ -736,6 +833,10 @@ void wfmain::removeRig()
 
 void wfmain::findSerialPort()
 {
+#ifdef Q_OS_IOS
+    serialPortRig.clear();
+#else
+
     // Find the ICOM radio connected, or, if none, fall back to OS default.
     // qInfo(logSystem()) << "Searching for serial port...";
     bool found = false;
@@ -801,6 +902,8 @@ void wfmain::findSerialPort()
 #endif
         }
     }
+
+#endif
 }
 
 void wfmain::receiveCommReady()
@@ -1097,10 +1200,11 @@ void wfmain::setServerToPrefs()
         ui->statusBar->showMessage(QString("Server disabled"), 1000);
     }
 
-    if (serverConfig.enabled) {
+    if (serverConfig.enabled || serverConfig.httpEnabled) {
         serverConfig.lan = prefs.enableLAN;
+        serverConfig.httpAccessOnly = !serverConfig.enabled;
 
-        switch (prefs.manufacturer)
+        if (serverConfig.enabled) switch (prefs.manufacturer)
         {
             case manufIcom:
                 server = new icomServer(&serverConfig);
@@ -1112,9 +1216,13 @@ void wfmain::setServerToPrefs()
                 server = new yaesuServer(&serverConfig);
                 break;
         default:
-            return;
+            break;
 
         }
+        if (!server && serverConfig.httpEnabled)
+            server = new kenwoodServer(&serverConfig);
+        if (!server)
+            return;
 
         serverThread = new QThread(this);
 
@@ -2086,6 +2194,9 @@ void wfmain::loadSettings()
     }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
+#ifdef Q_OS_IOS
+    prefs.virtualSerialPort = "none";
+#endif
 
 
     prefs.localAFgain = (quint8)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
@@ -2108,6 +2219,9 @@ void wfmain::loadSettings()
     settings->beginGroup("LAN");
 
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
+#ifdef Q_OS_IOS
+    prefs.enableLAN = true;
+#endif
 
     // If LAN is enabled, server gets its audio straight from the LAN
     // migrated, remove these
@@ -2248,10 +2362,12 @@ void wfmain::loadSettings()
 
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
     serverConfig.disableUI = settings->value("DisableUI", false).toBool();
+    serverConfig.httpEnabled = settings->value("HttpRemoteEnabled", false).toBool();
     // These defPrefs are actually for the client, but they are the same.
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
+    serverConfig.httpPort = settings->value("HttpRemotePort", 8080).toUInt();
 
     serverConfig.users.clear();
 
@@ -2683,11 +2799,11 @@ void wfmain::extChangedUdpPrefs(quint64 items)
 void wfmain::extChangedServerPrefs(quint64 items)
 {
     prefServerItem svi;
-    if(items & (int)u_all)
+    if(items & (int)s_all)
     {
         items = 0xffffffff;
     }
-    for(int i=1; i < (int)u_all; i = i << 1)
+    for(int i=1; i < (int)s_all; i = i << 1)
     {
         if(items & i)
         {
@@ -3322,6 +3438,10 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_enabled:
         setServerToPrefs();
         break;
+    case s_httpEnabled:
+    case s_httpPort:
+        setServerToPrefs();
+        break;
     case s_disableui:
         break;
     case s_lan:
@@ -3611,9 +3731,11 @@ void wfmain::saveSettings()
 
     settings->setValue("ServerEnabled", serverConfig.enabled);
     settings->setValue("DisableUI", serverConfig.disableUI);
+    settings->setValue("HttpRemoteEnabled", serverConfig.httpEnabled);
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
+    settings->setValue("HttpRemotePort", serverConfig.httpPort);
     if (!serverConfig.rigs.first()->txAudioSetup.name.isEmpty())
         settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
     if (!serverConfig.rigs.first()->rxAudioSetup.name.isEmpty())
@@ -4813,6 +4935,39 @@ void wfmain::showAndRaiseWidget(QWidget *w)
     if(!w)
         return;
 
+#ifdef Q_OS_IOS
+    // Frequency and band panels are standalone widgets (not QDialogs), so
+    // they have no title-bar close affordance on iOS. Add the same bottom
+    // return action used by the other mobile windows the first time they are
+    // shown, and force every embedded scroll area to be vertical-only.
+    if (!w->findChild<QPushButton*>("mobileBackToMainButton")) {
+        auto *back = new QPushButton(w);
+        back->setObjectName("mobileBackToMainButton");
+        back->setIcon(w->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
+        back->setAccessibleName(tr("Return to Main"));
+        back->setMinimumSize(48, 44);
+        connect(back, &QPushButton::clicked, this, [this, w]() {
+            w->hide(); show(); raise(); activateWindow();
+        });
+        for (auto *scroll : w->findChildren<QAbstractScrollArea*>()) {
+            scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+            scroll->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
+        }
+        QTimer::singleShot(0, w, [w, back]() {
+            back->setGeometry(qMax(12, w->width() - 60), 12, 48, 44);
+            back->raise();
+        });
+    } else if (auto *back = w->findChild<QPushButton*>("mobileBackToMainButton")) {
+        QTimer::singleShot(0, w, [w, back]() {
+            back->setGeometry(qMax(12, w->width() - 60), 12, 48, 44);
+            back->raise();
+        });
+    }
+#endif
+
     if(w->isMinimized())
     {
         w->raise();
@@ -5016,15 +5171,20 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
-    if(rpt->isMinimized())
-    {
-        rpt->raise();
-        rpt->activateWindow();
-        return;
+#ifdef Q_OS_IOS
+    if (!rpt->findChild<QPushButton*>("mobileBackToMainButton")) {
+        auto *closeButton = new QPushButton(rpt);
+        closeButton->setObjectName("mobileBackToMainButton");
+        closeButton->setIcon(rpt->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        closeButton->setIconSize(QSize(28, 28));
+        closeButton->setToolTip(tr("Return to Main"));
+        closeButton->setAccessibleName(tr("Return to Main"));
+        connect(closeButton, &QPushButton::clicked, this, [this]() {
+            rpt->hide(); show(); raise(); activateWindow();
+        });
     }
-    rpt->show();
-    rpt->raise();
-    rpt->activateWindow();
+#endif
+    showAndRaiseWidget(rpt);
 }
 
 void wfmain::on_attSelCombo_activated(int index)
@@ -5491,15 +5651,7 @@ void wfmain::setDefaultColorPresets()
 
 void wfmain::on_showLogBtn_clicked()
 {
-    if(logWindow->isMinimized())
-    {
-        logWindow->raise();
-        logWindow->activateWindow();
-        return;
-    }
-    logWindow->show();
-    logWindow->raise();
-    logWindow->activateWindow();
+    showAndRaiseWidget(logWindow);
 }
 
 void wfmain::initLogging()
@@ -5683,15 +5835,7 @@ void wfmain::connectionTimeout()
 void wfmain::on_cwButton_clicked()
 {
     if (cw != Q_NULLPTR) {
-        if(cw->isMinimized())
-        {
-            cw->raise();
-            cw->activateWindow();
-            return;
-        }
-        cw->show();
-        cw->raise();
-        cw->activateWindow();
+        showAndRaiseWidget(cw);
     }
 }
 
@@ -5763,6 +5907,20 @@ void wfmain::on_rigCreatorBtn_clicked()
 {
     rigCreator* create = new rigCreator();
     create->setAttribute(Qt::WA_DeleteOnClose);
+#ifdef Q_OS_IOS
+    auto *back = new QPushButton(create);
+    back->setIcon(create->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+    back->setIconSize(QSize(28, 28));
+    back->setToolTip(tr("Return to Main"));
+    back->setMinimumSize(180, 44);
+    QTimer::singleShot(0, create, [create, back]() {
+        back->setGeometry(qMax(12, create->width() - 60), 12, 48, 44);
+        back->raise();
+    });
+    connect(back, &QPushButton::clicked, create, [this, create]() {
+        create->close(); show(); raise(); activateWindow();
+    });
+#endif
     create->show();
 }
 
@@ -5770,6 +5928,20 @@ void wfmain::on_TXaudioProcBtn_clicked()
 {
     if (!audioProcWin) {
         audioProcWin = new AudioProcessingWidget(this);
+#ifdef Q_OS_IOS
+        auto *back = new QPushButton(audioProcWin);
+        back->setIcon(audioProcWin->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
+        back->setMinimumSize(180, 44);
+        QTimer::singleShot(0, audioProcWin, [this, back]() {
+            back->setGeometry(qMax(12, audioProcWin->width() - 60), 12, 48, 44);
+            back->raise();
+        });
+        connect(back, &QPushButton::clicked, this, [this]() {
+            audioProcWin->hide(); show(); raise(); activateWindow();
+        });
+#endif
         audioProcWin->setPrefs(prefs.txAudioProc);
         audioProcWin->setAntiAlias(prefs.wfAntiAlias);
 
@@ -5796,6 +5968,18 @@ void wfmain::on_TXaudioProcBtn_clicked()
         }
     }
     audioProcWin->show();
+ #ifdef Q_OS_IOS
+    for (auto *scroll : audioProcWin->findChildren<QAbstractScrollArea*>()) {
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    }
+    if (auto *back = audioProcWin->findChild<QPushButton*>("mobileBackToMainButton")) {
+        QTimer::singleShot(0, audioProcWin, [this, back]() {
+            back->setGeometry(qMax(12, audioProcWin->width() - 60), 12, 48, 44);
+            back->raise();
+        });
+    }
+ #endif
     audioProcWin->raise();
     audioProcWin->activateWindow();
 }
@@ -5841,6 +6025,20 @@ void wfmain::on_RXaudioProcBtn_clicked()
 {
     if (!rxAudioProcWin) {
         rxAudioProcWin = new RxAudioProcessingWidget(this);
+#ifdef Q_OS_IOS
+        auto *back = new QPushButton(rxAudioProcWin);
+        back->setIcon(rxAudioProcWin->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+        back->setIconSize(QSize(28, 28));
+        back->setToolTip(tr("Return to Main"));
+        back->setMinimumSize(180, 44);
+        QTimer::singleShot(0, rxAudioProcWin, [this, back]() {
+            back->setGeometry(qMax(12, rxAudioProcWin->width() - 60), 12, 48, 44);
+            back->raise();
+        });
+        connect(back, &QPushButton::clicked, this, [this]() {
+            rxAudioProcWin->hide(); show(); raise(); activateWindow();
+        });
+#endif
         rxAudioProcWin->setDebugMode(debugMode);
         rxAudioProcWin->setPrefs(prefs.rxAudioProc);
         rxAudioProcWin->setAntiAlias(prefs.wfAntiAlias);
@@ -5950,7 +6148,10 @@ void wfmain::receiveValue(cacheItem val){
 
     if (rigCaps == Q_NULLPTR)
     {
-        qWarning(logSystem()) << "Data received before we have rigCaps(), aborting";
+        if (pendingValues.size() < 256)
+            pendingValues.append(val);
+        if (pendingValues.size() == 1 || (pendingValues.size() % 64) == 0)
+            qInfo(logSystem()) << "Queueing radio data until rig capabilities are ready:" << pendingValues.size();
         return;
     }
     else if (val.receiver >= receivers.size())
@@ -6698,6 +6899,14 @@ void wfmain::receiveRigCaps(rigCapabilities* caps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps->hasSpectrum;
 
         configureVFOs(); // Now we have a rig connection, need to configure the VFOs
+
+        // Replay frames received while the initial capability exchange was in
+        // progress. This is especially important for Icom LAN scope packets,
+        // which can start flowing before the rig definition is installed.
+        const QVector<cacheItem> queued = pendingValues;
+        pendingValues.clear();
+        for (const cacheItem &queuedValue : queued)
+            receiveValue(queuedValue);
 
         rigName->setText(rigCaps->modelName);
         if (serverConfig.enabled) {

@@ -1,6 +1,15 @@
 #include "settingswidget.h"
+#ifndef Q_OS_IOS
 #include "qserialportinfo.h"
+#endif
 #include "ui_settingswidget.h"
+#ifdef Q_OS_IOS
+#include <QScrollArea>
+#include <QScroller>
+#include <QLayout>
+#include <QGroupBox>
+#include <QPushButton>
+#endif
 
 #define setchk(a,b) quietlyUpdateCheckbox(a,b)
 
@@ -10,6 +19,72 @@ settingswidget::settingswidget(QWidget *parent) :
     ui(new Ui::settingswidget)
 {
     ui->setupUi(this);
+    ui->ipAddressTxt->setPlaceholderText(tr("IP address or DNS hostname"));
+    ui->ipAddressTxt->setToolTip(tr("Enter an IPv4 address, DNS name, or dynamic-DNS hostname (for example radio.example.net). The name is resolved again whenever wfview reconnects."));
+#ifdef Q_OS_IOS
+    ui->serialEnableBtn->hide();
+    ui->groupSerial->hide();
+    ui->vspCombo->hide();
+    ui->ptyDeviceLabel->hide();
+    // iOS/iPadOS cannot expose the desktop USB-controller and serial APIs.
+    // Remove those controls instead of leaving options that can never work.
+    ui->enableUsbChk->hide();
+    ui->usbControllersSetup->hide();
+    ui->usbControllersReset->hide();
+    ui->usbResetLbl->hide();
+
+    // The desktop Settings form is a horizontal category list plus a wide
+    // stacked page. On iPhone/iPad, put the category selector above the page
+    // and give every page its own vertical-only touch scroll area.
+    auto *rootLayout = qobject_cast<QBoxLayout*>(layout());
+    if (rootLayout) {
+        rootLayout->setDirection(QBoxLayout::TopToBottom);
+        rootLayout->setContentsMargins(8, 8, 8, 8);
+        rootLayout->setSpacing(8);
+    }
+    ui->settingsList->setMinimumWidth(0);
+    ui->settingsList->setMaximumWidth(QWIDGETSIZE_MAX);
+    ui->settingsList->setMinimumHeight(72);
+    ui->settingsList->setMaximumHeight(120);
+    if (rootLayout) {
+        auto *categoryLayout = qobject_cast<QBoxLayout*>(rootLayout->itemAt(0)->layout());
+        if (categoryLayout)
+            categoryLayout->setDirection(QBoxLayout::TopToBottom);
+    }
+
+    const int currentPage = ui->settingsStack->currentIndex();
+    const QList<QWidget*> pages = [&]() {
+        QList<QWidget*> result;
+        for (int i = 0; i < ui->settingsStack->count(); ++i)
+            result.append(ui->settingsStack->widget(i));
+        return result;
+    }();
+    for (QWidget *page : pages) {
+        ui->settingsStack->removeWidget(page);
+        page->setMinimumWidth(0);
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        for (QWidget *child : page->findChildren<QWidget*>()) {
+            child->setMinimumWidth(0);
+            if (auto *group = qobject_cast<QGroupBox*>(child))
+                group->setMaximumWidth(QWIDGETSIZE_MAX);
+        }
+        auto *scroll = new QScrollArea(ui->settingsStack);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll->setWidget(page);
+        QScroller::grabGesture(scroll->viewport(), QScroller::TouchGesture);
+        ui->settingsStack->addWidget(scroll);
+    }
+    ui->settingsStack->setCurrentIndex(qMax(0, currentPage));
+
+    // On mobile, the regular Save Settings button closes Settings through the
+    // main-window mobile close connection; do not add a second full-width
+    // action to the form.
+    connect(ui->saveSettingsBtn, &QPushButton::clicked, this,
+            &settingswidget::mobileCloseSettingsRequested);
+#endif
 
     connect(ui->serverUsersTable,SIGNAL(rowAdded(int)),this, SLOT(serverAddUserLine(int)));
     connect(ui->serverUsersTable,SIGNAL(rowDeleted(int)),this,SLOT(serverDeleteUserLine(int)));
@@ -41,7 +116,9 @@ settingswidget::~settingswidget()
     }
 
     if (prefs->audioSystem == portAudio) {
+#ifndef Q_OS_IOS
         Pa_Terminate();
+#endif
     }
 }
 
@@ -857,6 +934,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->blockSignals(true);
         ui->serialDeviceListCombo->clear();
         ui->serialDeviceListCombo->addItem("Auto", "");
+#ifndef Q_OS_IOS
         for(const auto &serialPortInfo: QSerialPortInfo::availablePorts())
         {
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
@@ -870,6 +948,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
 
+#endif
         ui->serialDeviceListCombo->setCurrentIndex(ui->serialDeviceListCombo->findData(prefs->serialPortRadio));
         ui->serialDeviceListCombo->blockSignals(false);
         break;
@@ -1111,6 +1190,10 @@ void settingswidget::updateServerConfig(prefServerItem si)
     case s_disableui:
         quietlyUpdateCheckbox(ui->serverDisableUIChk, serverConfig->disableUI);
         break;
+    case s_httpEnabled:
+        quietlyUpdateCheckbox(ui->serverHttpEnableCheckbox, serverConfig->httpEnabled);
+        ui->serverHttpPortText->setEnabled(serverConfig->httpEnabled);
+        break;
     case s_lan:
         // Not used here
         break;
@@ -1122,6 +1205,9 @@ void settingswidget::updateServerConfig(prefServerItem si)
         break;
     case s_audioPort:
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
+        break;
+    case s_httpPort:
+        quietlyUpdateLineEdit(ui->serverHttpPortText, QString::number(serverConfig->httpPort));
         break;
     case s_audioOutput:
         if (serverConfig->enabled) {
@@ -1641,6 +1727,11 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
 
 void settingswidget::on_serialEnableBtn_clicked(bool checked)
 {
+#ifdef Q_OS_IOS
+    Q_UNUSED(checked);
+    prefs->enableLAN = true;
+    return;
+#endif
     ui->groupSerial->setEnabled(checked);
     ui->groupNetwork->setEnabled(!checked);
 
@@ -3280,6 +3371,13 @@ void settingswidget::on_serverDisableUIChk_clicked(bool checked)
     emit changedServerPref(s_disableui);
 }
 
+void settingswidget::on_serverHttpEnableCheckbox_clicked(bool checked)
+{
+    serverConfig->httpEnabled = checked;
+    ui->serverHttpPortText->setEnabled(checked);
+    emit changedServerPref(s_httpEnabled);
+}
+
 void settingswidget::on_serverControlPortText_textChanged(QString text)
 {
     if(!haveServerConfig)
@@ -3311,6 +3409,17 @@ void settingswidget::on_serverAudioPortText_textChanged(QString text)
     }
     serverConfig->audioPort = text.toInt();
     emit changedServerPref(s_audioPort);
+}
+
+void settingswidget::on_serverHttpPortText_textChanged(QString text)
+{
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify HTTP remote port without valid serverConfig.";
+        return;
+    }
+    serverConfig->httpPort = text.toUShort();
+    emit changedServerPref(s_httpPort);
 }
 
 
@@ -3387,12 +3496,14 @@ void settingswidget::connectionStatus(bool conn)
 
     ui->serverEnableCheckbox->setEnabled(!conn);
     ui->serverDisableUIChk->setEnabled(!conn);
+    ui->serverHttpEnableCheckbox->setEnabled(!conn);
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
     ui->serverControlPortText->setEnabled(!conn);
     ui->serverAudioPortText->setEnabled(!conn);
     ui->serverCivPortText->setEnabled(!conn);
+    ui->serverHttpPortText->setEnabled(!conn && serverConfig != NULL && serverConfig->httpEnabled);
     ui->serverScopePortText->setEnabled(!conn);
     ui->serverUsersTable->setEnabled(!conn);
     ui->serverUsersAddBtn->setEnabled(!conn);

@@ -101,6 +101,7 @@ signals:
     void changedServerPref(prefServerItem i);
     void connectButtonPressed();
     void saveSettingsButtonPressed();
+    void mobileCloseSettingsRequested();
     void revertSettingsButtonPressed();
     void havePortError(errorType err);
 
@@ -199,11 +200,13 @@ private slots:
 
     void on_serverEnableCheckbox_clicked(bool checked);
     void on_serverDisableUIChk_clicked(bool checked);
+    void on_serverHttpEnableCheckbox_clicked(bool checked);
     void on_serverRXAudioInputCombo_currentIndexChanged(int index);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
+    void on_serverHttpPortText_textChanged(QString text);
 
     // Color slots
     void on_colorPresetCombo_currentIndexChanged(int index);

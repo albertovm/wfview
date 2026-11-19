@@ -60,10 +60,13 @@ struct RIGCONFIG {
 struct SERVERCONFIG {
 	bool enabled;
     bool disableUI;
+	bool httpEnabled;
+	bool httpAccessOnly;
 	bool lan;
 	quint16 controlPort;
 	quint16 civPort;
 	quint16 audioPort;
+	quint16 httpPort;
 	int audioOutput;
 	int audioInput;
 	quint8 resampleQuality;
@@ -85,7 +88,9 @@ enum prefServerItem {
     s_baudRate = 1 << 9,
     s_users = 1 << 10,
     s_rigs = 1 << 11,
-    s_all = 1 << 12
+    s_httpEnabled = 1 << 12,
+    s_httpPort = 1 << 13,
+    s_all = 1 << 14
 };
 
 

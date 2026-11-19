@@ -465,6 +465,8 @@ void servermain::loadSettings()
         settings->setValue("ServerControlPort", udpDefPrefs.controlLANPort);
         settings->setValue("ServerCivPort", udpDefPrefs.serialLANPort);
         settings->setValue("ServerAudioPort", udpDefPrefs.audioLANPort);
+        settings->setValue("HttpRemoteEnabled", false);
+        settings->setValue("HttpRemotePort", 8080);
 
         settings->beginWriteArray("Users");
         settings->setArrayIndex(0);
@@ -610,9 +612,11 @@ void servermain::loadSettings()
 
     settings->beginGroup("Server");
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
+    serverConfig.httpEnabled = settings->value("HttpRemoteEnabled", false).toBool();
     serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
+    serverConfig.httpPort = settings->value("HttpRemotePort", 8080).toUInt();
 
     serverConfig.users.clear();
 
