@@ -17,6 +17,7 @@
 #include <QList>
 #include <QVector>
 #include <QMap>
+#include <QSet>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -77,6 +78,9 @@ private:
 
 
     QTcpServer* server = Q_NULLPTR;
+    QTcpServer* httpServer = Q_NULLPTR;
+    QSet<QString> httpSessions;
+    QMap<QString, bool> httpSessionTx;
     QMap <QTcpSocket*, CLIENT*> clients;
 
     rtpAudio* rtp = Q_NULLPTR;

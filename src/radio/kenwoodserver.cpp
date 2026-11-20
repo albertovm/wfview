@@ -2,6 +2,8 @@
 
 #include "kenwoodserver.h"
 #include "logcategories.h"
+#include "icomudpbase.h"
+#include <QUuid>
 
 kenwoodServer::kenwoodServer(SERVERCONFIG* config, rigServer* parent) :
     rigServer(config,parent)
@@ -13,7 +15,85 @@ void kenwoodServer::init()
 {
     connect(queue,SIGNAL(rigCapsUpdated(rigCapabilities*)),this, SLOT(receiveRigCaps(rigCapabilities*)));
 
+    if (config->httpEnabled) {
+        httpServer = new QTcpServer(this);
+        if (httpServer->listen(QHostAddress::Any, config->httpPort)) {
+            connect(httpServer, &QTcpServer::newConnection, this, [this]() {
+                while (httpServer->hasPendingConnections()) {
+                    QTcpSocket *socket = httpServer->nextPendingConnection();
+                    connect(socket, &QTcpSocket::readyRead, socket, [this, socket]() {
+                        const QByteArray request = socket->readAll();
+                        const QList<QByteArray> lines = request.split('\n');
+                        if (lines.isEmpty()) { socket->disconnectFromHost(); return; }
+                        const QList<QByteArray> requestLine = lines.first().trimmed().split(' ');
+                        const QByteArray path = requestLine.size() > 1 ? requestLine[1] : QByteArray("/");
+                        QByteArray body;
+                        QByteArray status("200 OK");
+                        QByteArray type("text/html; charset=utf-8");
+                        const QByteArray cookie = request.toLower().contains("cookie: wfview_session=")
+                            ? request.mid(request.toLower().indexOf("cookie: wfview_session=") + 23).split('\n').first().trimmed()
+                            : QByteArray();
+                        bool authenticated = httpSessions.contains(QString::fromLatin1(cookie));
+                        if (path.startsWith("/login") && requestLine.size() > 0 && requestLine[0] == "POST") {
+                            const int separator = request.indexOf("\r\n\r\n");
+                            const QByteArray form = separator >= 0 ? request.mid(separator + 4) : QByteArray();
+                            auto value = [&form](const QByteArray &key) {
+                                const QByteArray marker = key + '=';
+                                int at = form.indexOf(marker);
+                                if (at < 0) return QByteArray();
+                                QByteArray v = form.mid(at + marker.size()).split('&').first().replace('+', ' ');
+                                return QByteArray::fromPercentEncoding(v);
+                            };
+                            const QString username = QString::fromUtf8(value("username"));
+                            QByteArray pass;
+                            passcode(QString::fromUtf8(value("password")), pass);
+                            bool valid = false;
+                            bool txAllowed = false;
+                            for (const SERVERUSER &user : config->users)
+                                if (user.username == username && user.password == pass) {
+                                    valid = true;
+                                    txAllowed = user.userType != 2;
+                                    break;
+                                }
+                            if (valid) {
+                                const QString token = QUuid::createUuid().toString(QUuid::WithoutBraces);
+                                httpSessions.insert(token);
+                                httpSessionTx.insert(token, txAllowed);
+                                socket->write("HTTP/1.1 303 See Other\r\nLocation: /\r\nSet-Cookie: wfview_session=" + token.toLatin1() + "; HttpOnly; SameSite=Strict; Path=/\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+                                socket->disconnectFromHost();
+                                return;
+                            }
+                            status = "401 Unauthorized";
+                        }
+                        if (path == "/logout") {
+                            httpSessions.remove(QString::fromLatin1(cookie));
+                            httpSessionTx.remove(QString::fromLatin1(cookie));
+                            socket->write("HTTP/1.1 303 See Other\r\nLocation: /\r\nSet-Cookie: wfview_session=; Max-Age=0; HttpOnly; Path=/\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+                            socket->disconnectFromHost();
+                            return;
+                        }
+                        if (!authenticated) {
+                            body = "<!doctype html><meta name='viewport' content='width=device-width'><title>wfview login</title><style>body{font:16px system-ui;background:#111827;color:#eee;display:grid;place-items:center;height:90vh}form{padding:2rem;background:#1f2937;border-radius:12px}input,button{display:block;margin:12px 0;padding:12px;width:240px}</style><form method='post' action='/login'><h1>wfview</h1><input name='username' placeholder='Username' required><input name='password' type='password' placeholder='Password' required><button>Sign in</button>" + (status.startsWith("401") ? QByteArray("<p>Invalid username or password</p>") : QByteArray()) + "</form>";
+                        } else {
+                            const bool txAllowed = httpSessionTx.value(QString::fromLatin1(cookie), false);
+                            body = "<!doctype html><meta name='viewport' content='width=device-width'><title>wfview remote</title><style>body{font:16px system-ui;background:#111827;color:#eee;margin:2rem}main{max-width:800px;margin:auto;background:#1f2937;padding:2rem;border-radius:14px}a{color:#67e8f9}</style><main><h1>wfview Remote</h1><p>Authenticated with Radio Server Users.</p><p>" + (txAllowed ? QByteArray("Transmit permission enabled.") : QByteArray("Receive only account.")) + "</p><a href='/logout'>Sign out</a></main>";
+                        }
+                        const QByteArray response = "HTTP/1.1 " + status + "\r\nContent-Type: " + type + "\r\nCache-Control: no-store\r\nConnection: close\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\n\r\n" + body;
+                        socket->write(response);
+                        socket->disconnectFromHost();
+                    });
+                }
+            });
+            qInfo(logRigServer()) << "HTTP remote access listening on port" << config->httpPort;
+        } else {
+            qWarning(logRigServer()) << "Could not start HTTP remote access on port" << config->httpPort;
+        }
+    }
+
     server = new QTcpServer(this);
+
+    if (config->httpAccessOnly)
+        return;
 
     if (!server->listen(QHostAddress::Any, config->controlPort)) {
         qInfo(logRigServer()) << "could not start on port " << config->controlPort;

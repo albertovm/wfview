@@ -1190,6 +1190,10 @@ void settingswidget::updateServerConfig(prefServerItem si)
     case s_disableui:
         quietlyUpdateCheckbox(ui->serverDisableUIChk, serverConfig->disableUI);
         break;
+    case s_httpEnabled:
+        quietlyUpdateCheckbox(ui->serverHttpEnableCheckbox, serverConfig->httpEnabled);
+        ui->serverHttpPortText->setEnabled(serverConfig->httpEnabled);
+        break;
     case s_lan:
         // Not used here
         break;
@@ -1201,6 +1205,9 @@ void settingswidget::updateServerConfig(prefServerItem si)
         break;
     case s_audioPort:
         quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
+        break;
+    case s_httpPort:
+        quietlyUpdateLineEdit(ui->serverHttpPortText, QString::number(serverConfig->httpPort));
         break;
     case s_audioOutput:
         if (serverConfig->enabled) {
@@ -3364,6 +3371,13 @@ void settingswidget::on_serverDisableUIChk_clicked(bool checked)
     emit changedServerPref(s_disableui);
 }
 
+void settingswidget::on_serverHttpEnableCheckbox_clicked(bool checked)
+{
+    serverConfig->httpEnabled = checked;
+    ui->serverHttpPortText->setEnabled(checked);
+    emit changedServerPref(s_httpEnabled);
+}
+
 void settingswidget::on_serverControlPortText_textChanged(QString text)
 {
     if(!haveServerConfig)
@@ -3395,6 +3409,17 @@ void settingswidget::on_serverAudioPortText_textChanged(QString text)
     }
     serverConfig->audioPort = text.toInt();
     emit changedServerPref(s_audioPort);
+}
+
+void settingswidget::on_serverHttpPortText_textChanged(QString text)
+{
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify HTTP remote port without valid serverConfig.";
+        return;
+    }
+    serverConfig->httpPort = text.toUShort();
+    emit changedServerPref(s_httpPort);
 }
 
 
@@ -3471,12 +3496,14 @@ void settingswidget::connectionStatus(bool conn)
 
     ui->serverEnableCheckbox->setEnabled(!conn);
     ui->serverDisableUIChk->setEnabled(!conn);
+    ui->serverHttpEnableCheckbox->setEnabled(!conn);
     ui->serverRXAudioInputCombo->setEnabled(!conn);
     ui->serverTXAudioOutputCombo->setEnabled(!conn);
     ui->audioSystemServerCombo->setEnabled(!conn);
     ui->serverControlPortText->setEnabled(!conn);
     ui->serverAudioPortText->setEnabled(!conn);
     ui->serverCivPortText->setEnabled(!conn);
+    ui->serverHttpPortText->setEnabled(!conn && serverConfig != NULL && serverConfig->httpEnabled);
     ui->serverScopePortText->setEnabled(!conn);
     ui->serverUsersTable->setEnabled(!conn);
     ui->serverUsersAddBtn->setEnabled(!conn);

@@ -1200,10 +1200,11 @@ void wfmain::setServerToPrefs()
         ui->statusBar->showMessage(QString("Server disabled"), 1000);
     }
 
-    if (serverConfig.enabled) {
+    if (serverConfig.enabled || serverConfig.httpEnabled) {
         serverConfig.lan = prefs.enableLAN;
+        serverConfig.httpAccessOnly = !serverConfig.enabled;
 
-        switch (prefs.manufacturer)
+        if (serverConfig.enabled) switch (prefs.manufacturer)
         {
             case manufIcom:
                 server = new icomServer(&serverConfig);
@@ -1215,9 +1216,13 @@ void wfmain::setServerToPrefs()
                 server = new yaesuServer(&serverConfig);
                 break;
         default:
-            return;
+            break;
 
         }
+        if (!server && serverConfig.httpEnabled)
+            server = new kenwoodServer(&serverConfig);
+        if (!server)
+            return;
 
         serverThread = new QThread(this);
 
@@ -2357,10 +2362,12 @@ void wfmain::loadSettings()
 
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
     serverConfig.disableUI = settings->value("DisableUI", false).toBool();
+    serverConfig.httpEnabled = settings->value("HttpRemoteEnabled", false).toBool();
     // These defPrefs are actually for the client, but they are the same.
     serverConfig.controlPort = settings->value("ServerControlPort", udpDefPrefs.controlLANPort).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", udpDefPrefs.serialLANPort).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", udpDefPrefs.audioLANPort).toInt();
+    serverConfig.httpPort = settings->value("HttpRemotePort", 8080).toUInt();
 
     serverConfig.users.clear();
 
@@ -2792,11 +2799,11 @@ void wfmain::extChangedUdpPrefs(quint64 items)
 void wfmain::extChangedServerPrefs(quint64 items)
 {
     prefServerItem svi;
-    if(items & (int)u_all)
+    if(items & (int)s_all)
     {
         items = 0xffffffff;
     }
-    for(int i=1; i < (int)u_all; i = i << 1)
+    for(int i=1; i < (int)s_all; i = i << 1)
     {
         if(items & i)
         {
@@ -3431,6 +3438,10 @@ void wfmain::extChangedServerPref(prefServerItem i)
     case s_enabled:
         setServerToPrefs();
         break;
+    case s_httpEnabled:
+    case s_httpPort:
+        setServerToPrefs();
+        break;
     case s_disableui:
         break;
     case s_lan:
@@ -3720,9 +3731,11 @@ void wfmain::saveSettings()
 
     settings->setValue("ServerEnabled", serverConfig.enabled);
     settings->setValue("DisableUI", serverConfig.disableUI);
+    settings->setValue("HttpRemoteEnabled", serverConfig.httpEnabled);
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
+    settings->setValue("HttpRemotePort", serverConfig.httpPort);
     if (!serverConfig.rigs.first()->txAudioSetup.name.isEmpty())
         settings->setValue("ServerAudioOutput", serverConfig.rigs.first()->txAudioSetup.name);
     if (!serverConfig.rigs.first()->rxAudioSetup.name.isEmpty())

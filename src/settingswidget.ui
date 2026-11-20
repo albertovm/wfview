@@ -2938,6 +2938,59 @@ ONLY use Manual CI-V when Transceive mode is not supported</string>
                </layout>
               </item>
               <item>
+               <layout class="QHBoxLayout" name="serverHttpRemoteLayout">
+                <item>
+                 <widget class="QCheckBox" name="serverHttpEnableCheckbox">
+                  <property name="text">
+                   <string>Enable HTTP Remote Access</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="serverHttpPortLabel">
+                  <property name="text">
+                   <string>HTTP Remote Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="serverHttpPortText">
+                  <property name="minimumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>130</width>
+                    <height>25</height>
+                   </size>
+                  </property>
+                  <property name="inputMask">
+                   <string>99999</string>
+                  </property>
+                  <property name="text">
+                   <string>8080</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="serverHttpRemoteSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
                <layout class="QHBoxLayout" name="serverAudioHorizLayout">
                 <item>
                  <widget class="QLabel" name="label_33">
